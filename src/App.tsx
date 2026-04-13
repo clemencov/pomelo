@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
+import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, onSnapshot, setDoc, type FirestoreError } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
@@ -87,6 +87,10 @@ export default function App() {
   const [lastDone, setLastDone] = useState('')
 
   useEffect(() => {
+    getRedirectResult(auth).catch(e => toast.error('Sign-in failed: ' + e?.message))
+  }, [])
+
+  useEffect(() => {
     let unsubFirestore: (() => void) | null = null
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u)
@@ -127,7 +131,7 @@ export default function App() {
   }
 
   async function login() {
-    try { await signInWithPopup(auth, googleProvider) } catch (e) { console.error(e) }
+    try { await signInWithRedirect(auth, googleProvider) } catch (e) { console.error(e) }
   }
   async function logout() { await signOut(auth); setUser(null) }
 
