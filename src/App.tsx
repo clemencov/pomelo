@@ -4,13 +4,12 @@ import type { User } from 'firebase/auth'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loadTasks, saveTasks, loadLog, saveLog, daysUntilDue } from './store'
 import type { Task, LogEntry } from './types'
-import { Check, Pencil, Plus, ScrollText, Clock, AlertTriangle, BellOff, LogOut, RefreshCw } from 'lucide-react'
+import { Check, Pencil, Plus, Clock, AlertTriangle, BellOff, LogOut, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function isSnoozed(task: Task): boolean {
@@ -29,21 +28,21 @@ function urgency(task: Task): 'overdue' | 'soon' | 'ok' | 'new' | 'snoozed' {
 function dueLabel(task: Task): string {
   if (isSnoozed(task)) {
     const until = new Date(task.snoozedUntil!)
-    return `snoozed until ${until.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+    return `snoozed · ${until.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
   }
-  if (!task.lastDone) return 'Never done'
+  if (!task.lastDone) return 'never done'
   const days = daysUntilDue(task)
   if (days < 0) return `${Math.abs(days)}d overdue`
-  if (days === 0) return 'Due today'
-  if (days === 1) return 'Due tomorrow'
-  return `In ${days}d`
+  if (days === 0) return 'due today'
+  if (days === 1) return 'due tomorrow'
+  return `due in ${days}d`
 }
 
 function intervalLabel(days: number): string {
-  if (days % 365 === 0) return `every ${days / 365}yr`
-  if (days % 30 === 0) return `every ${days / 30}mo`
-  if (days % 7 === 0) return `every ${days / 7}wk`
-  return `every ${days}d`
+  if (days % 365 === 0) return `/${days / 365}yr`
+  if (days % 30 === 0) return `/${days / 30}mo`
+  if (days % 7 === 0) return `/${days / 7}wk`
+  return `/${days}d`
 }
 
 function toDateInput(iso: string | null): string {
@@ -51,11 +50,11 @@ function toDateInput(iso: string | null): string {
 }
 
 const urgencyConfig = {
-  overdue: { bar: 'bg-red-500',     label: 'text-red-600 dark:text-red-400',         icon: AlertTriangle },
-  soon:    { bar: 'bg-amber-400',   label: 'text-amber-600 dark:text-amber-400',     icon: Clock },
-  ok:      { bar: 'bg-emerald-400', label: 'text-emerald-600 dark:text-emerald-400', icon: Check },
-  new:     { bar: 'bg-slate-300',   label: 'text-muted-foreground',                  icon: AlertTriangle },
-  snoozed: { bar: 'bg-violet-300',  label: 'text-violet-500 dark:text-violet-400',   icon: BellOff },
+  overdue: { dot: 'bg-red-500',    text: 'text-red-600 dark:text-red-400',        icon: AlertTriangle },
+  soon:    { dot: 'bg-amber-400',  text: 'text-amber-600 dark:text-amber-500',    icon: Clock },
+  ok:      { dot: 'bg-emerald-500',text: 'text-emerald-700 dark:text-emerald-500',icon: Check },
+  new:     { dot: 'bg-stone-400',  text: 'text-muted-foreground',                 icon: AlertTriangle },
+  snoozed: { dot: 'bg-stone-300',  text: 'text-muted-foreground',                 icon: BellOff },
 }
 
 const SNOOZE_PRESETS = [
@@ -78,7 +77,6 @@ export default function App() {
   const [log, setLog] = useState<LogEntry[]>(loadLog)
   const [syncState, setSyncState] = useState<SyncState>('idle')
 
-  // UI state
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -89,20 +87,16 @@ export default function App() {
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
 
-  // Auth listener + real-time Firestore sync
   useEffect(() => {
     let unsubFirestore: (() => void) | null = null
-
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u)
       if (unsubFirestore) { unsubFirestore(); unsubFirestore = null }
-
       if (u) {
         setSyncState('syncing')
         unsubFirestore = onSnapshot(
           doc(db, 'users', u.uid),
           (snap) => {
-            // Skip updates caused by our own pending writes
             if (snap.metadata.hasPendingWrites) return
             if (snap.exists()) {
               const data = snap.data() as { tasks: Task[]; log: LogEntry[] }
@@ -116,54 +110,36 @@ export default function App() {
         )
       }
     })
-
     return () => { unsubAuth(); if (unsubFirestore) unsubFirestore() }
   }, [])
 
-  // Debounced save to Firestore
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const syncToFirestore = useCallback((t: Task[], l: LogEntry[]) => {
     if (!user || user === 'loading') return
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(async () => {
       setSyncState('syncing')
-      try {
-        await saveToFirestore(user.uid, t, l)
-        setSyncState('idle')
-      } catch {
-        setSyncState('error')
-      }
+      try { await saveToFirestore(user.uid, t, l); setSyncState('idle') }
+      catch { setSyncState('error') }
     }, 1000)
   }, [user])
 
   function updateTasks(updated: Task[]) {
-    setTasks(updated); saveTasks(updated)
-    syncToFirestore(updated, log)
+    setTasks(updated); saveTasks(updated); syncToFirestore(updated, log)
   }
-
   function updateLog(t: Task[], l: LogEntry[]) {
-    setTasks(t); saveTasks(t)
-    setLog(l); saveLog(l)
-    syncToFirestore(t, l)
+    setTasks(t); saveTasks(t); setLog(l); saveLog(l); syncToFirestore(t, l)
   }
 
   async function login() {
-    try { await signInWithPopup(auth, googleProvider) }
-    catch (e) { console.error(e) }
+    try { await signInWithPopup(auth, googleProvider) } catch (e) { console.error(e) }
   }
+  async function logout() { await signOut(auth); setUser(null) }
 
-  async function logout() {
-    await signOut(auth)
-    setUser(null)
-  }
-
-  // Task operations
   function openAdd() { setName(''); setInterval('30'); setLastDone(''); setShowAdd(true) }
-
   function openEdit(task: Task) {
     setName(task.name); setInterval(String(task.intervalDays))
-    setLastDone(toDateInput(task.lastDone)); setConfirmDelete(false)
-    setEditingTask(task)
+    setLastDone(toDateInput(task.lastDone)); setConfirmDelete(false); setEditingTask(task)
   }
 
   function addTask() {
@@ -176,7 +152,6 @@ export default function App() {
     }])
     setShowAdd(false)
   }
-
   function saveEdit() {
     if (!editingTask || !name.trim()) return
     updateTasks(tasks.map(t => t.id === editingTask.id
@@ -184,26 +159,18 @@ export default function App() {
       : t))
     setEditingTask(null)
   }
-
-  function deleteTask(id: string) {
-    updateTasks(tasks.filter(t => t.id !== id))
-    setEditingTask(null)
-  }
-
+  function deleteTask(id: string) { updateTasks(tasks.filter(t => t.id !== id)); setEditingTask(null) }
   function markDone(task: Task) {
     const now = new Date().toISOString()
     const updatedTasks = tasks.map(t => t.id === task.id ? { ...t, lastDone: now, snoozedUntil: null } : t)
     const updatedLog = [{ id: crypto.randomUUID(), taskId: task.id, taskName: task.name, doneAt: now }, ...log]
     updateLog(updatedTasks, updatedLog)
   }
-
   function snooze(taskId: string, days: number) {
-    const until = new Date()
-    until.setDate(until.getDate() + days)
+    const until = new Date(); until.setDate(until.getDate() + days)
     updateTasks(tasks.map(t => t.id === taskId ? { ...t, snoozedUntil: until.toISOString() } : t))
     setSnoozeTaskId(null); setCustomSnooze('')
   }
-
   function unsnooze(taskId: string) {
     updateTasks(tasks.map(t => t.id === taskId ? { ...t, snoozedUntil: null } : t))
   }
@@ -215,9 +182,8 @@ export default function App() {
     if (!a.lastDone && !b.lastDone) return 0
     if (!a.lastDone) return -1
     if (!b.lastDone) return -1
-    const aDue = new Date(a.lastDone).getTime() + a.intervalDays * 86400000
-    const bDue = new Date(b.lastDone).getTime() + b.intervalDays * 86400000
-    return aDue - bDue
+    return (new Date(a.lastDone).getTime() + a.intervalDays * 86400000) -
+           (new Date(b.lastDone).getTime() + b.intervalDays * 86400000)
   })
 
   const today = new Date().toISOString().split('T')[0]
@@ -225,40 +191,43 @@ export default function App() {
   const snoozeTask = snoozeTaskId ? tasks.find(t => t.id === snoozeTaskId) : null
 
   const TaskForm = () => (
-    <div className="space-y-6 py-2">
-      <div className="space-y-2">
-        <Label className="text-base">Name</Label>
-        <Input className="text-base h-12" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
+    <div className="space-y-5 py-2">
+      <div className="space-y-1.5">
+        <Label className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Name</Label>
+        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
       </div>
-      <div className="space-y-2">
-        <Label className="text-base">Repeat every (days)</Label>
-        <Input className="text-base h-12" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
+      <div className="space-y-1.5">
+        <Label className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Repeat every (days)</Label>
+        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
       </div>
-      <div className="space-y-2">
-        <Label className="text-base">Last done <span className="text-muted-foreground font-normal">(optional)</span></Label>
-        <Input className="text-base h-12" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
+      <div className="space-y-1.5">
+        <Label className="text-sm font-mono text-muted-foreground uppercase tracking-wider">
+          Last done <span className="normal-case tracking-normal font-sans">(optional)</span>
+        </Label>
+        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
       </div>
     </div>
   )
 
-  // Loading
   if (user === 'loading') {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <RefreshCw className="w-5 h-5 text-muted-foreground animate-spin" />
       </div>
     )
   }
 
-  // Login screen
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <div className="text-center space-y-6 px-6">
-          <h1 className="text-4xl font-semibold tracking-tight">pomelo</h1>
-          <p className="text-muted-foreground text-base">Recurring task manager — synced to your account</p>
-          <Button className="text-base h-12 px-8" onClick={login}>
-            Sign in with Google
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-8 px-6 max-w-sm">
+          <div>
+            <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase mb-3">v0.1</p>
+            <h1 className="text-5xl font-semibold tracking-tight">pomelo</h1>
+            <p className="text-muted-foreground mt-3">Track recurring maintenance tasks.<br />Never forget what needs doing.</p>
+          </div>
+          <Button className="w-full h-11 font-mono tracking-wide" onClick={login}>
+            Sign in with Google →
           </Button>
         </div>
       </div>
@@ -266,118 +235,133 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="max-w-2xl mx-auto px-6 py-16">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-2xl mx-auto px-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight">pomelo</h1>
+        <header className="flex items-center justify-between py-8 border-b border-border">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold tracking-tight">pomelo</h1>
             {overdueCount > 0 && (
-              <p className="text-base text-red-500 mt-1">{overdueCount} task{overdueCount > 1 ? 's' : ''} need attention</p>
+              <span className="font-mono text-xs text-red-500 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded">
+                {overdueCount} overdue
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            {syncState === 'syncing' && <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />}
-            {syncState === 'error' && <span className="text-xs text-red-500">sync failed</span>}
-            <Button variant="ghost" className="text-muted-foreground text-base h-11 px-4" onClick={() => setShowLog(true)}>
-              <ScrollText className="w-5 h-5 mr-2" />
-              Log
+          <div className="flex items-center gap-1">
+            {syncState === 'syncing' && <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin mr-2" />}
+            {syncState === 'error' && <span className="font-mono text-xs text-red-500 mr-2">sync error</span>}
+            <Button variant="ghost" size="sm" className="text-muted-foreground font-mono text-sm h-8 px-3" onClick={() => setShowLog(true)}>
+              log
             </Button>
-            <Button className="text-base h-11 px-5" onClick={openAdd}>
-              <Plus className="w-5 h-5 mr-1.5" />
-              Add task
+            <Button size="sm" className="font-mono text-sm h-8 px-3" onClick={openAdd}>
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              new task
             </Button>
-            <div className="flex items-center gap-2 pl-2 border-l border-border">
-              <img src={user.photoURL ?? ''} alt={user.displayName ?? ''} className="w-8 h-8 rounded-full" />
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={logout} title="Sign out">
-                <LogOut className="w-4 h-4" />
+            <div className="flex items-center gap-1 ml-2 pl-2 border-l border-border">
+              <img src={user.photoURL ?? ''} alt="" className="w-6 h-6 rounded-full opacity-80" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={logout}>
+                <LogOut className="w-3.5 h-3.5" />
               </Button>
             </div>
           </div>
-        </div>
+        </header>
 
         {/* Empty state */}
         {sorted.length === 0 && (
           <div className="text-center py-32 text-muted-foreground">
-            <BellOff className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <p className="text-lg font-medium">No recurring tasks</p>
-            <p className="text-base mt-1">Add something you do regularly</p>
+            <p className="font-mono text-sm">no tasks yet</p>
+            <p className="text-sm mt-1">add something you do regularly</p>
           </div>
         )}
 
         {/* Task list */}
-        <div className="space-y-3">
+        <div className="divide-y divide-border">
           {sorted.map(task => {
             const u = urgency(task)
             const cfg = urgencyConfig[u]
-            const Icon = cfg.icon
             const snoozed = u === 'snoozed'
+            const dueDate = task.lastDone
+              ? new Date(new Date(task.lastDone).getTime() + task.intervalDays * 86400000)
+              : null
+
             return (
-              <Card key={task.id} className={cn('overflow-hidden border-0 shadow-sm', snoozed && 'opacity-60')}>
-                <div className={cn('h-1.5 w-full', cfg.bar)} />
-                <CardContent className="flex items-center gap-6 py-6 px-7">
-                  <Icon className={cn('w-6 h-6 shrink-0', cfg.label)} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-lg font-medium truncate">{task.name}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{intervalLabel(task.intervalDays)}</p>
-                  </div>
-                  <div className="text-right shrink-0 space-y-1">
-                    <p className={cn('text-sm font-semibold', cfg.label)}>{dueLabel(task)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {task.lastDone
-                        ? `done ${new Date(task.lastDone).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-                        : 'never done'}
-                    </p>
-                    {task.lastDone && !snoozed && (
-                      <p className="text-xs text-muted-foreground">
-                        due {new Date(new Date(task.lastDone).getTime() + task.intervalDays * 86400000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:text-emerald-600" onClick={() => markDone(task)} title="Mark done">
-                      <Check className="w-5 h-5" />
-                    </Button>
-                    {snoozed ? (
-                      <Button variant="ghost" className="h-11 w-11 p-0 text-violet-400 hover:text-violet-600" onClick={() => unsnooze(task.id)} title="Unsnooze">
-                        <BellOff className="w-5 h-5" />
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:text-violet-500" onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }} title="Snooze">
-                        <BellOff className="w-5 h-5" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEdit(task)} title="Edit">
-                      <Pencil className="w-4.5 h-4.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={task.id} className={cn('flex items-center gap-5 py-5 group', snoozed && 'opacity-40')}>
+                {/* Status dot */}
+                <div className={cn('w-2 h-2 rounded-full shrink-0 mt-0.5', cfg.dot)} />
+
+                {/* Name + interval */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{task.name}</p>
+                  <p className="font-mono text-xs text-muted-foreground mt-0.5">{intervalLabel(task.intervalDays)}</p>
+                </div>
+
+                {/* Dates */}
+                <div className="text-right shrink-0 hidden sm:block">
+                  <p className={cn('font-mono text-sm', cfg.text)}>{dueLabel(task)}</p>
+                  <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                    {task.lastDone
+                      ? `last ${new Date(task.lastDone).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                      : '—'
+                    }
+                    {dueDate && !snoozed ? ` · ${dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : ''}
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-emerald-600 hover:bg-secondary transition-colors"
+                    onClick={() => markDone(task)} title="Mark done"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  {snoozed ? (
+                    <button className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                      onClick={() => unsnooze(task.id)} title="Unsnooze">
+                      <BellOff className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                      onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }} title="Snooze">
+                      <BellOff className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    onClick={() => openEdit(task)} title="Edit">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             )
           })}
         </div>
 
         {/* Snooze dialog */}
         <Dialog open={!!snoozeTaskId} onOpenChange={open => !open && setSnoozeTaskId(null)}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader><DialogTitle className="text-xl">Snooze — {snoozeTask?.name}</DialogTitle></DialogHeader>
-            <div className="py-2 space-y-4">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">Snooze</DialogTitle>
+              <p className="font-medium text-base pt-0.5">{snoozeTask?.name}</p>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
               <div className="flex gap-2">
                 {SNOOZE_PRESETS.map(p => (
-                  <Button key={p.days} variant="outline" className="flex-1 h-11 text-base" onClick={() => snooze(snoozeTaskId!, p.days)}>
+                  <button key={p.days}
+                    className="flex-1 h-10 font-mono text-sm border border-border rounded hover:bg-secondary transition-colors"
+                    onClick={() => snooze(snoozeTaskId!, p.days)}>
                     {p.label}
-                  </Button>
+                  </button>
                 ))}
               </div>
-              <div className="flex gap-2 items-center">
-                <Input className="text-base h-11" type="date" value={customSnooze} min={today} onChange={e => setCustomSnooze(e.target.value)} />
-                <Button className="h-11 px-5 text-base shrink-0" disabled={!customSnooze}
+              <div className="flex gap-2">
+                <Input className="h-10 font-mono bg-secondary border-0 focus-visible:ring-1" type="date" value={customSnooze} min={today} onChange={e => setCustomSnooze(e.target.value)} />
+                <Button className="h-10 px-4 font-mono text-sm shrink-0" disabled={!customSnooze}
                   onClick={() => {
                     const days = Math.round((new Date(customSnooze).getTime() - Date.now()) / 86400000)
                     if (days > 0) snooze(snoozeTaskId!, days)
                   }}>
-                  Snooze
+                  snooze →
                 </Button>
               </div>
             </div>
@@ -386,36 +370,40 @@ export default function App() {
 
         {/* Add dialog */}
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader><DialogTitle className="text-xl">Add task</DialogTitle></DialogHeader>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">New task</DialogTitle>
+            </DialogHeader>
             <TaskForm />
             <DialogFooter>
-              <Button variant="ghost" className="text-base h-11" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button className="text-base h-11 px-6" onClick={addTask}>Add task</Button>
+              <Button variant="ghost" className="font-mono text-sm h-10" onClick={() => setShowAdd(false)}>cancel</Button>
+              <Button className="font-mono text-sm h-10 px-5" onClick={addTask}>add task →</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Edit dialog */}
         <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader><DialogTitle className="text-xl">Edit task</DialogTitle></DialogHeader>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">Edit task</DialogTitle>
+            </DialogHeader>
             {confirmDelete ? (
-              <div className="py-2 space-y-5">
-                <p className="text-base text-muted-foreground">Permanently delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This cannot be undone.</p>
+              <div className="py-3 space-y-4">
+                <p className="text-sm text-muted-foreground">Delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This cannot be undone.</p>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" className="text-base h-11" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-                  <Button variant="destructive" className="text-base h-11" onClick={() => editingTask && deleteTask(editingTask.id)}>Delete permanently</Button>
+                  <Button variant="ghost" className="font-mono text-sm h-10" onClick={() => setConfirmDelete(false)}>cancel</Button>
+                  <Button variant="destructive" className="font-mono text-sm h-10" onClick={() => editingTask && deleteTask(editingTask.id)}>delete →</Button>
                 </div>
               </div>
             ) : (
               <>
                 <TaskForm />
                 <DialogFooter className="flex-row justify-between sm:justify-between">
-                  <Button variant="ghost" className="text-base h-11 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => setConfirmDelete(true)}>Delete</Button>
+                  <Button variant="ghost" className="font-mono text-sm h-10 text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>delete</Button>
                   <div className="flex gap-2">
-                    <Button variant="ghost" className="text-base h-11" onClick={() => setEditingTask(null)}>Cancel</Button>
-                    <Button className="text-base h-11 px-6" onClick={saveEdit}>Save</Button>
+                    <Button variant="ghost" className="font-mono text-sm h-10" onClick={() => setEditingTask(null)}>cancel</Button>
+                    <Button className="font-mono text-sm h-10 px-5" onClick={saveEdit}>save →</Button>
                   </div>
                 </DialogFooter>
               </>
@@ -425,18 +413,22 @@ export default function App() {
 
         {/* Log dialog */}
         <Dialog open={showLog} onOpenChange={setShowLog}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader><DialogTitle className="text-xl">History</DialogTitle></DialogHeader>
-            <div className="max-h-[28rem] overflow-y-auto -mx-1 px-1">
-              {log.length === 0 && <p className="text-base text-muted-foreground text-center py-10">No entries yet.</p>}
-              <div className="space-y-1 py-2">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">History</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-96 overflow-y-auto -mx-1 px-1">
+              {log.length === 0 && <p className="font-mono text-sm text-muted-foreground text-center py-8">no entries yet</p>}
+              <div className="divide-y divide-border">
                 {log.map(entry => (
-                  <div key={entry.id} className="flex items-center justify-between py-3 px-3 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900">
+                  <div key={entry.id} className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
-                      <Check className="w-4 h-4 text-emerald-500" />
-                      <span className="text-base">{entry.taskName}</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="text-sm">{entry.taskName}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{new Date(entry.doneAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {new Date(entry.doneAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
                   </div>
                 ))}
               </div>
