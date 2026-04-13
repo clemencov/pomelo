@@ -13,14 +13,14 @@ import { Check, Pencil, Plus, BellOff, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster, toast } from 'sonner'
 
-// ── Playfair Display italic display style ────────────────────────────────
-const playfair = (size: string | number, weight = 700): React.CSSProperties => ({
+// Playfair Display italic — used only for the wordmark
+const wordmarkStyle = (size: string | number, weight = 700): React.CSSProperties => ({
   fontFamily: '"Playfair Display Variable", Georgia, serif',
   fontStyle: 'italic',
   fontWeight: weight,
   fontSize: typeof size === 'number' ? `${size}rem` : size,
   letterSpacing: '-0.02em',
-  lineHeight: '0.9',
+  lineHeight: 1,
 })
 
 function isSnoozed(task: Task): boolean {
@@ -45,34 +45,57 @@ function humanizeDays(d: number): string {
 function dueLabel(task: Task): string {
   if (isSnoozed(task)) {
     const until = new Date(task.snoozedUntil!)
-    return `snoozed until ${until.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}`
+    return `Snoozed until ${until.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
   }
-  if (!task.lastDone) return "hasn't been done yet"
+  if (!task.lastDone) return "Not done yet"
   const days = daysUntilDue(task)
   if (days < 0) return `${humanizeDays(Math.abs(days))} overdue`
-  if (days === 0) return 'due today'
-  if (days === 1) return 'due tomorrow'
-  return `due in ${humanizeDays(days)}`
+  if (days === 0) return 'Due today'
+  if (days === 1) return 'Due tomorrow'
+  return `Due in ${humanizeDays(days)}`
 }
 
 function intervalLabel(days: number): string {
-  if (days === 1) return 'every day'
-  if (days % 365 === 0) return days === 365 ? 'every year' : `every ${days / 365} years`
-  if (days % 30 === 0) return days === 30 ? 'every month' : `every ${days / 30} months`
-  if (days % 7 === 0) return days === 7 ? 'every week' : `every ${days / 7} weeks`
-  return `every ${days} days`
+  if (days === 1) return 'Every day'
+  if (days % 365 === 0) return days === 365 ? 'Every year' : `Every ${days / 365} years`
+  if (days % 30 === 0) return days === 30 ? 'Every month' : `Every ${days / 30} months`
+  if (days % 7 === 0) return days === 7 ? 'Every week' : `Every ${days / 7} weeks`
+  return `Every ${days} days`
 }
 
 function toDateInput(iso: string | null): string {
   return iso ? iso.split('T')[0] : ''
 }
 
+// Status shown as a badge ABOVE the task name — magazine category label pattern.
+// The colored dot + uppercase text creates an immediate urgency signal before
+// the eye even reaches the task name.
 const urgencyConfig = {
-  overdue: { card: 'bg-red-50 border-red-200 dark:bg-red-500/[0.08] dark:border-red-500/20',     text: 'text-red-600 dark:text-red-400' },
-  soon:    { card: 'bg-amber-50 border-amber-200 dark:bg-amber-400/[0.08] dark:border-amber-400/20', text: 'text-amber-600 dark:text-amber-400' },
-  ok:      { card: 'bg-white border-border dark:bg-card dark:border-border',                       text: 'text-brand' },
-  new:     { card: 'bg-white border-border dark:bg-card dark:border-border',                       text: 'text-muted-foreground' },
-  snoozed: { card: 'bg-white border-border dark:bg-card dark:border-border',                       text: 'text-muted-foreground' },
+  overdue: {
+    badge: 'text-red-600 dark:text-red-400',
+    dot:   'bg-red-500',
+    card:  'bg-red-50/60 dark:bg-red-500/[0.06]',
+  },
+  soon: {
+    badge: 'text-amber-600 dark:text-amber-400',
+    dot:   'bg-amber-500',
+    card:  '',
+  },
+  ok: {
+    badge: 'text-emerald-600 dark:text-emerald-500',
+    dot:   'bg-emerald-500',
+    card:  '',
+  },
+  new: {
+    badge: 'text-muted-foreground',
+    dot:   'bg-muted-foreground/40',
+    card:  '',
+  },
+  snoozed: {
+    badge: 'text-muted-foreground',
+    dot:   'bg-muted-foreground/30',
+    card:  '',
+  },
 }
 
 const SNOOZE_PRESETS = [
@@ -83,6 +106,7 @@ const SNOOZE_PRESETS = [
 
 type SyncState = 'idle' | 'syncing'
 
+// Defined outside App so React doesn't remount on every keystroke
 function TaskForm({ name, setName, interval, setInterval, lastDone, setLastDone, today }: {
   name: string; setName: (v: string) => void
   interval: string; setInterval: (v: string) => void
@@ -90,18 +114,20 @@ function TaskForm({ name, setName, interval, setInterval, lastDone, setLastDone,
   today: string
 }) {
   return (
-    <div className="space-y-6 py-2">
-      <div className="space-y-2.5">
-        <Label className="text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-muted-foreground">What needs doing?</Label>
-        <Input className="h-14 text-[1.125rem] font-medium bg-secondary border-0 focus-visible:ring-1 rounded-xl" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
+    <div className="space-y-5 py-1">
+      <div className="space-y-2">
+        <Label className="text-[0.6875rem] font-[700] tracking-[0.1em] uppercase text-muted-foreground">Task name</Label>
+        <Input className="h-14 text-[1.0625rem] font-[500] bg-secondary border-0 focus-visible:ring-1 rounded-xl" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
       </div>
-      <div className="space-y-2.5">
-        <Label className="text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-muted-foreground">Repeat every how many days?</Label>
-        <Input className="h-14 text-[1.125rem] font-medium bg-secondary border-0 focus-visible:ring-1 rounded-xl" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
+      <div className="space-y-2">
+        <Label className="text-[0.6875rem] font-[700] tracking-[0.1em] uppercase text-muted-foreground">Repeat every (days)</Label>
+        <Input className="h-14 text-[1.0625rem] font-[500] bg-secondary border-0 focus-visible:ring-1 rounded-xl" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
       </div>
-      <div className="space-y-2.5">
-        <Label className="text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-muted-foreground">Last done <span className="normal-case tracking-normal font-normal opacity-60">(optional)</span></Label>
-        <Input className="h-14 text-[1.125rem] font-medium bg-secondary border-0 focus-visible:ring-1 rounded-xl" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
+      <div className="space-y-2">
+        <Label className="text-[0.6875rem] font-[700] tracking-[0.1em] uppercase text-muted-foreground">
+          Last done <span className="normal-case tracking-normal font-[400] opacity-55">(optional)</span>
+        </Label>
+        <Input className="h-14 text-[1.0625rem] font-[500] bg-secondary border-0 focus-visible:ring-1 rounded-xl" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
       </div>
     </div>
   )
@@ -117,7 +143,6 @@ export default function App() {
     loadTasks().map(t => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
   )
   const [syncState, setSyncState] = useState<SyncState>('idle')
-
   const [showAdd, setShowAdd] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -178,7 +203,7 @@ export default function App() {
     saveTimeout.current = setTimeout(() => {
       saveToFirestore(user.uid, t).catch((err) => {
         console.error('Firestore write error:', err)
-        toast.error('Could not save changes — ' + (err?.message ?? 'unknown error'))
+        toast.error('Could not save — ' + (err?.message ?? 'unknown error'))
       })
     }, 300)
   }, [user])
@@ -190,11 +215,10 @@ export default function App() {
   async function login() {
     try { await signInWithPopup(auth, googleProvider) }
     catch (e: unknown) {
-      const code = (e as {code?: string})?.code
+      const code = (e as { code?: string })?.code
       if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        const msg = e instanceof Error ? e.message : String(e)
+        toast.error('Sign-in failed: ' + (e instanceof Error ? e.message : String(e)))
         console.error(e)
-        toast.error('Sign-in failed: ' + msg)
       }
     }
   }
@@ -225,8 +249,7 @@ export default function App() {
   }
   function deleteTask(id: string) { updateTasks(tasks.filter(t => t.id !== id)); setEditingTask(null) }
   function markDone(task: Task) {
-    const now = new Date().toISOString()
-    updateTasks(tasks.map(t => t.id === task.id ? { ...t, lastDone: now, snoozedUntil: null } : t))
+    updateTasks(tasks.map(t => t.id === task.id ? { ...t, lastDone: new Date().toISOString(), snoozedUntil: null } : t))
   }
   function snooze(taskId: string, days: number) {
     const until = new Date(); until.setDate(until.getDate() + days)
@@ -249,14 +272,14 @@ export default function App() {
   })
 
   const today = new Date().toISOString().split('T')[0]
-  const overdueCount = tasks.filter(t => { const u = urgency(t); return u === 'overdue' || u === 'new' }).length
+  const overdueCount = tasks.filter(t => urgency(t) === 'overdue').length
   const snoozeTask = tasks.find(t => t.id === snoozeTaskId)
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (user === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-6 h-6 rounded-full border-2 border-foreground/15 border-t-foreground/60 animate-spin" />
+        <div className="w-5 h-5 rounded-full border-2 border-foreground/15 border-t-foreground/50 animate-spin" />
       </div>
     )
   }
@@ -264,30 +287,23 @@ export default function App() {
   // ── Login ────────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-background flex items-center justify-center px-8">
         <Toaster position="bottom-center" richColors />
-        <div className="flex-1" />
-        <div className="px-8 pb-20 sm:pb-28 max-w-2xl">
-          <div className="mb-14">
-            {/*
-              Fraunces Variable italic at high optical size (opsz 144) — the letterforms
-              open up beautifully at display scale. SOFT 80 adds organic warmth.
-              Brand color makes the wordmark unmistakable.
-            */}
+        <div className="w-full max-w-xs flex flex-col items-center text-center gap-12">
+          <div>
             <h1
-              style={{
-                ...playfair('clamp(5.5rem, 24vw, 10rem)', 800),
-                color: 'hsl(var(--brand))',
-              }}
+              style={{ ...wordmarkStyle('clamp(3.75rem, 18vw, 5.5rem)', 800), color: 'hsl(var(--brand))' }}
             >
               pomelo
             </h1>
-            {/* Light weight against the heavy serif wordmark — maximum contrast */}
-            <p className="mt-8 text-[1.125rem] text-muted-foreground leading-[1.72] font-[350]">
+            <p className="mt-5 text-[1rem] text-muted-foreground leading-[1.72] font-[380]">
               A quiet reminder for the things<br />you do on a regular schedule.
             </p>
           </div>
-          <Button className="w-full h-[3.75rem] text-[1.0625rem] font-semibold rounded-xl" onClick={login}>
+          <Button
+            className="w-full h-[3.5rem] text-[1rem] font-[600] rounded-2xl"
+            onClick={login}
+          >
             Continue with Google
           </Button>
         </div>
@@ -302,44 +318,40 @@ export default function App() {
       <div className="max-w-2xl mx-auto px-5 sm:px-8">
 
         {/* Header */}
-        <header className="flex items-center justify-between pt-9 pb-7">
+        <header className="flex items-center justify-between pt-10 pb-8">
           <div className="flex items-center gap-3">
-            {/* Fraunces at smaller opsz — adapts letterform weight to display context */}
-            <h1
-              style={{ ...playfair('2rem', 700), color: 'hsl(var(--brand))' }}
-            >
+            <h1 style={{ ...wordmarkStyle('1.875rem', 700), color: 'hsl(var(--brand))' }}>
               pomelo
             </h1>
             {syncState === 'syncing' && (
-              <div className="w-2 h-2 rounded-full bg-foreground/20 animate-pulse" />
-            )}
-            {overdueCount > 0 && syncState === 'idle' && (
-              <span className="text-[0.6875rem] font-bold tracking-[0.08em] uppercase text-red-500">
-                {overdueCount} overdue
-              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-foreground/25 animate-pulse" />
             )}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {user.photoURL && (
-              <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full opacity-80" />
+              <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full opacity-75" />
             )}
-            <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-muted-foreground hover:text-foreground" onClick={logout}>
-              <LogOut className="w-[1.1rem] h-[1.1rem]" />
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground" onClick={logout}>
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </header>
 
+        {/* Section label — only shown when something needs attention */}
+        {overdueCount > 0 && (
+          <p className="mb-5 text-[0.6875rem] font-[700] tracking-[0.1em] uppercase text-red-500">
+            {overdueCount} {overdueCount === 1 ? 'task' : 'tasks'} overdue
+          </p>
+        )}
+
         {/* Empty state */}
         {sorted.length === 0 && (
-          <div className="pt-14 pb-8">
-            <p
-              className="text-foreground font-[700] tracking-[-0.03em] leading-[1.1] text-balance"
-              style={{ fontSize: 'clamp(2rem, 8vw, 2.75rem)' }}
-            >
-              Nothing to track yet
+          <div className="pt-16 pb-10 max-w-xs">
+            <p className="text-[2.25rem] font-[750] tracking-[-0.04em] leading-[1.1]">
+              Nothing<br />here yet.
             </p>
-            <p className="mt-5 text-[1.0625rem] text-muted-foreground leading-[1.65] font-[400]">
-              Tap the + to add something you do<br />on a regular schedule.
+            <p className="mt-5 text-[1rem] text-muted-foreground leading-[1.65] font-[400]">
+              Add anything you do on a schedule — weekly, monthly, yearly.
             </p>
           </div>
         )}
@@ -355,69 +367,88 @@ export default function App() {
               <div
                 key={task.id}
                 className={cn(
-                  'rounded-2xl border overflow-hidden transition-opacity',
+                  // Light: floating card with shadow, no border
+                  // Dark: surface card with subtle border
+                  'rounded-2xl bg-white shadow-[var(--shadow-card)]',
+                  'dark:bg-card dark:shadow-none dark:border dark:border-border',
                   cfg.card,
-                  snoozed && 'opacity-45'
+                  snoozed && 'opacity-40'
                 )}
               >
-                <div className="flex items-center px-6 py-6 gap-4">
-                  {/* Content */}
+                <div className="flex gap-5 px-7 py-6">
+
+                  {/* Left: status label → name → interval */}
                   <div className="flex-1 min-w-0">
-                    {/* Task name — Outfit geometric sans, hero size */}
-                    <p className="text-[1.5rem] font-[600] tracking-[-0.02em] leading-[1.2] truncate font-task">
+                    {/* Status badge — magazine category label, above the headline */}
+                    <div className={cn('flex items-center gap-1.5 mb-2.5', cfg.badge)}>
+                      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', cfg.dot)} />
+                      <span className="text-[0.6875rem] font-[700] tracking-[0.07em] uppercase">
+                        {dueLabel(task)}
+                      </span>
+                    </div>
+
+                    {/* Hero task name */}
+                    <p className="text-[1.625rem] font-[720] tracking-[-0.03em] leading-[1.15]">
                       {task.name}
                     </p>
-                    {/* Status + interval — one scannable line */}
-                    <p className="mt-2 text-[1rem] leading-none">
-                      <span className={cn('font-[540]', cfg.text)}>{dueLabel(task)}</span>
-                      <span className="text-muted-foreground font-[400]"> · {intervalLabel(task.intervalDays)}</span>
+
+                    {/* Interval — tertiary, muted */}
+                    <p className="mt-2 text-[0.875rem] text-muted-foreground font-[450]">
+                      {intervalLabel(task.intervalDays)}
                     </p>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
+                  {/* Right: primary action top, secondary actions bottom */}
+                  <div className="flex flex-col items-end justify-between shrink-0 py-0.5">
+                    {/* Done — primary CTA */}
                     <button
-                      className="h-12 w-12 rounded-xl flex items-center justify-center text-brand hover:bg-brand/10 active:bg-brand/15 transition-colors"
+                      className="h-11 w-11 rounded-xl flex items-center justify-center text-brand hover:bg-brand/10 active:bg-brand/15 transition-colors"
                       onClick={() => markDone(task)}
                       title="Mark done"
                     >
-                      <Check className="w-[1.3rem] h-[1.3rem]" strokeWidth={2.5} />
+                      <Check className="w-5 h-5" strokeWidth={2.5} />
                     </button>
-                    {snoozed ? (
+
+                    {/* Secondary actions */}
+                    <div className="flex items-center gap-0.5">
+                      {snoozed ? (
+                        <button
+                          className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          onClick={() => unsnooze(task.id)}
+                          title="Wake up"
+                        >
+                          <BellOff className="w-[1rem] h-[1rem]" />
+                        </button>
+                      ) : (
+                        <button
+                          className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }}
+                          title="Snooze"
+                        >
+                          <BellOff className="w-[1rem] h-[1rem]" />
+                        </button>
+                      )}
                       <button
-                        className="h-12 w-12 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-secondary active:bg-secondary transition-colors"
-                        onClick={() => unsnooze(task.id)}
-                        title="Wake up"
+                        className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        onClick={() => openEdit(task)}
+                        title="Edit"
                       >
-                        <BellOff className="w-[1.2rem] h-[1.2rem]" />
+                        <Pencil className="w-[0.9rem] h-[0.9rem]" />
                       </button>
-                    ) : (
-                      <button
-                        className="h-12 w-12 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-secondary active:bg-secondary transition-colors"
-                        onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }}
-                        title="Snooze"
-                      >
-                        <BellOff className="w-[1.2rem] h-[1.2rem]" />
-                      </button>
-                    )}
-                    <button
-                      className="h-12 w-12 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-secondary active:bg-secondary transition-colors"
-                      onClick={() => openEdit(task)}
-                      title="Edit"
-                    >
-                      <Pencil className="w-[1.1rem] h-[1.1rem]" />
-                    </button>
+                    </div>
                   </div>
+
                 </div>
               </div>
             )
           })}
         </div>
+
       </div>
 
       {/* FAB */}
       <button
-        className="fixed bottom-8 right-6 h-16 w-16 rounded-full bg-brand text-white shadow-xl shadow-brand/30 flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+        className="fixed bottom-8 right-6 h-16 w-16 rounded-full bg-brand text-white flex items-center justify-center shadow-[0_4px_20px_hsl(346_65%_47%/0.4)] hover:opacity-90 active:scale-95 transition-all"
         onClick={openAdd}
         title="Add task"
       >
@@ -428,17 +459,18 @@ export default function App() {
       <Dialog open={!!snoozeTaskId} onOpenChange={open => !open && setSnoozeTaskId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-[1.5rem] font-[700] tracking-[-0.025em] leading-tight">
-              Snooze "{snoozeTask?.name}"
+            <DialogTitle className="text-[1.375rem] font-[700] tracking-[-0.025em] leading-snug">
+              Snooze<br />
+              <span className="text-muted-foreground font-[500]">"{snoozeTask?.name}"</span>
             </DialogTitle>
-            <p className="text-[1rem] text-muted-foreground">Come back to it after:</p>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <p className="text-[0.9375rem] text-muted-foreground -mt-1">Come back to it after:</p>
+          <div className="space-y-3 pt-1">
             <div className="flex gap-2">
               {SNOOZE_PRESETS.map(p => (
                 <button
                   key={p.days}
-                  className="flex-1 h-14 text-[1rem] font-semibold border border-border rounded-xl hover:bg-secondary active:bg-secondary transition-colors"
+                  className="flex-1 h-14 text-[0.9375rem] font-[600] border border-border rounded-xl hover:bg-secondary active:bg-secondary transition-colors"
                   onClick={() => snooze(snoozeTaskId!, p.days)}
                 >
                   {p.label}
@@ -446,15 +478,9 @@ export default function App() {
               ))}
             </div>
             <div className="flex gap-2">
-              <Input
-                className="h-14 text-[1rem] bg-secondary border-0 focus-visible:ring-1 rounded-xl"
-                type="date"
-                value={customSnooze}
-                min={today}
-                onChange={e => setCustomSnooze(e.target.value)}
-              />
+              <Input className="h-14 text-base bg-secondary border-0 focus-visible:ring-1 rounded-xl" type="date" value={customSnooze} min={today} onChange={e => setCustomSnooze(e.target.value)} />
               <Button
-                className="h-14 px-6 text-[1rem] font-semibold shrink-0 rounded-xl"
+                className="h-14 px-6 text-base font-[600] shrink-0 rounded-xl"
                 disabled={!customSnooze}
                 onClick={() => {
                   const days = Math.round((new Date(customSnooze).getTime() - Date.now()) / 86400000)
@@ -472,12 +498,12 @@ export default function App() {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-[1.5rem] font-[700] tracking-[-0.025em]">New task</DialogTitle>
+            <DialogTitle className="text-[1.375rem] font-[700] tracking-[-0.025em]">New task</DialogTitle>
           </DialogHeader>
           <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
           <DialogFooter>
-            <Button variant="ghost" className="h-14 text-[1rem] font-medium rounded-xl" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button className="h-14 px-7 text-[1rem] font-semibold rounded-xl" onClick={addTask}>Add task</Button>
+            <Button variant="ghost" className="h-13 text-[0.9375rem] font-[500] rounded-xl" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button className="h-13 px-7 text-[0.9375rem] font-[600] rounded-xl" onClick={addTask}>Add task</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -486,26 +512,26 @@ export default function App() {
       <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-[1.5rem] font-[700] tracking-[-0.025em]">Edit task</DialogTitle>
+            <DialogTitle className="text-[1.375rem] font-[700] tracking-[-0.025em]">Edit task</DialogTitle>
           </DialogHeader>
           {confirmDelete ? (
-            <div className="py-3 space-y-6">
-              <p className="text-[1rem] text-muted-foreground leading-relaxed">
-                Delete <span className="font-semibold text-foreground">"{editingTask?.name}"</span>?<br />This can't be undone.
+            <div className="py-2 space-y-6">
+              <p className="text-[0.9375rem] text-muted-foreground leading-relaxed">
+                Delete <span className="font-[600] text-foreground">"{editingTask?.name}"</span>?<br />This can't be undone.
               </p>
               <div className="flex gap-3 justify-end">
-                <Button variant="ghost" className="h-14 text-[1rem] font-medium rounded-xl" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-                <Button variant="destructive" className="h-14 text-[1rem] font-semibold rounded-xl" onClick={() => editingTask && deleteTask(editingTask.id)}>Delete</Button>
+                <Button variant="ghost" className="h-13 text-[0.9375rem] font-[500] rounded-xl" onClick={() => setConfirmDelete(false)}>Keep it</Button>
+                <Button variant="destructive" className="h-13 text-[0.9375rem] font-[600] rounded-xl" onClick={() => editingTask && deleteTask(editingTask.id)}>Delete</Button>
               </div>
             </div>
           ) : (
             <>
               <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
-              <DialogFooter className="flex-row justify-between sm:justify-between">
-                <Button variant="ghost" className="h-14 text-[1rem] font-medium text-muted-foreground hover:text-destructive rounded-xl" onClick={() => setConfirmDelete(true)}>Delete</Button>
+              <DialogFooter className="flex-row justify-between sm:justify-between gap-2">
+                <Button variant="ghost" className="h-13 text-[0.9375rem] font-[500] text-muted-foreground hover:text-destructive rounded-xl" onClick={() => setConfirmDelete(true)}>Delete</Button>
                 <div className="flex gap-2">
-                  <Button variant="ghost" className="h-14 text-[1rem] font-medium rounded-xl" onClick={() => setEditingTask(null)}>Cancel</Button>
-                  <Button className="h-14 px-7 text-[1rem] font-semibold rounded-xl" onClick={saveEdit}>Save</Button>
+                  <Button variant="ghost" className="h-13 text-[0.9375rem] font-[500] rounded-xl" onClick={() => setEditingTask(null)}>Cancel</Button>
+                  <Button className="h-13 px-6 text-[0.9375rem] font-[600] rounded-xl" onClick={saveEdit}>Save</Button>
                 </div>
               </DialogFooter>
             </>

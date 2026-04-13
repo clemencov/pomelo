@@ -1,8 +1,6 @@
-/* UI text — Plus Jakarta Sans Variable */
+/* UI — Plus Jakarta Sans Variable */
 @import "@fontsource-variable/plus-jakarta-sans/wght.css";
-/* Task titles — Outfit Variable (geometric, clean, modern) */
-@import "@fontsource-variable/outfit/wght.css";
-/* Logo / wordmark — Playfair Display Variable italic (high-contrast editorial serif) */
+/* Wordmark — Playfair Display Variable italic */
 @import "@fontsource-variable/playfair-display/wght-italic.css";
 @import "tailwindcss";
 
@@ -30,61 +28,59 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  /* UI font */
   --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  /* Task titles */
-  --font-task: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
-  /* Logo / wordmark */
   --font-display: "Playfair Display Variable", Georgia, serif;
+  /* Card shadow for light mode */
+  --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.04), 0 8px 24px hsl(0 0% 0% / 0.07);
 }
 
 @layer base {
   :root {
-    --background: 40 18% 97%;
-    --foreground: 220 14% 10%;
+    --background: 0 0% 97%;
+    --foreground: 220 15% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 220 14% 10%;
+    --card-foreground: 220 15% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 14% 10%;
-    /* Brand — deep indigo */
-    --brand: 248 52% 50%;
-    --primary: 248 52% 50%;
+    --popover-foreground: 220 15% 9%;
+    /* Rose — warm, distinctive, not generic */
+    --brand: 346 65% 47%;
+    --primary: 346 65% 47%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 10% 93%;
-    --secondary-foreground: 220 14% 10%;
-    --muted: 40 10% 93%;
-    --muted-foreground: 220 8% 46%;
-    --accent: 40 10% 93%;
-    --accent-foreground: 220 14% 10%;
+    --secondary: 220 10% 93%;
+    --secondary-foreground: 220 15% 9%;
+    --muted: 220 10% 93%;
+    --muted-foreground: 220 8% 48%;
+    --accent: 220 10% 93%;
+    --accent-foreground: 220 15% 9%;
     --destructive: 4 72% 46%;
     --destructive-foreground: 0 0% 100%;
-    --border: 36 10% 88%;
-    --input: 36 10% 88%;
-    --ring: 248 52% 50%;
+    --border: 220 8% 90%;
+    --input: 220 8% 90%;
+    --ring: 346 65% 47%;
     --radius: 1rem;
   }
 
   .dark {
-    --background: 220 14% 7%;
-    --foreground: 40 12% 93%;
-    --card: 220 12% 10%;
-    --card-foreground: 40 12% 93%;
-    --popover: 220 12% 10%;
-    --popover-foreground: 40 12% 93%;
-    --brand: 248 62% 68%;
-    --primary: 248 62% 68%;
-    --primary-foreground: 220 14% 7%;
-    --secondary: 220 8% 14%;
-    --secondary-foreground: 40 12% 93%;
-    --muted: 220 8% 14%;
+    --background: 220 16% 7%;
+    --foreground: 40 10% 92%;
+    --card: 220 14% 10%;
+    --card-foreground: 40 10% 92%;
+    --popover: 220 14% 10%;
+    --popover-foreground: 40 10% 92%;
+    --brand: 346 58% 62%;
+    --primary: 346 58% 62%;
+    --primary-foreground: 220 16% 7%;
+    --secondary: 220 10% 15%;
+    --secondary-foreground: 40 10% 92%;
+    --muted: 220 10% 15%;
     --muted-foreground: 220 6% 50%;
-    --accent: 220 8% 14%;
-    --accent-foreground: 40 12% 93%;
+    --accent: 220 10% 15%;
+    --accent-foreground: 40 10% 92%;
     --destructive: 4 62% 42%;
-    --destructive-foreground: 40 12% 93%;
+    --destructive-foreground: 40 10% 92%;
     --border: 220 8% 17%;
     --input: 220 8% 17%;
-    --ring: 248 62% 68%;
+    --ring: 346 58% 62%;
   }
 }
 
