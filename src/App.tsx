@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, type FirestoreError } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -66,7 +66,7 @@ const SNOOZE_PRESETS = [
 type SyncState = 'idle' | 'syncing' | 'error'
 
 async function saveToFirestore(uid: string, tasks: Task[]) {
-  await setDoc(doc(db, 'users', uid), { tasks })
+  await setDoc(doc(db, 'users', uid), { tasks }, { merge: true })
 }
 
 export default function App() {
@@ -103,7 +103,7 @@ export default function App() {
             }
             setSyncState('idle')
           },
-          () => setSyncState('error')
+          (err: FirestoreError) => { console.error('Firestore snapshot error:', err.code, err.message); setSyncState('error') }
         )
       }
     })
@@ -117,7 +117,7 @@ export default function App() {
     saveTimeout.current = setTimeout(async () => {
       setSyncState('syncing')
       try { await saveToFirestore(user.uid, t); setSyncState('idle') }
-      catch { setSyncState('error') }
+      catch (err) { console.error('Firestore write error:', err); setSyncState('error') }
     }, 1000)
   }, [user])
 
