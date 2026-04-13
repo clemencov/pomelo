@@ -172,7 +172,19 @@ export default function App() {
                     <p className="text-lg font-medium truncate">{task.name}</p>
                     <p className="text-sm text-muted-foreground mt-0.5">{intervalLabel(task.intervalDays)}</p>
                   </div>
-                  <span className={cn('text-base font-medium shrink-0', cfg.label)}>{dueLabel(task)}</span>
+                  <div className="text-right shrink-0 space-y-1">
+                    <p className={cn('text-sm font-semibold', cfg.label)}>{dueLabel(task)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {task.lastDone
+                        ? <>done {new Date(task.lastDone).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
+                        : 'never done'}
+                    </p>
+                    {task.lastDone && (
+                      <p className="text-xs text-muted-foreground">
+                        due {new Date(new Date(task.lastDone).getTime() + task.intervalDays * 86400000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button
                       variant="ghost"
