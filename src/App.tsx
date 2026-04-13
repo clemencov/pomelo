@@ -82,16 +82,16 @@ function TaskForm({ name, setName, interval, setInterval, lastDone, setLastDone,
   return (
     <div className="space-y-5 py-2">
       <div className="space-y-2">
-        <Label className="text-base text-muted-foreground">What needs doing?</Label>
-        <Input className="h-13 text-base bg-secondary border-0 focus-visible:ring-1" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
+        <Label className="text-[0.7rem] font-semibold tracking-widest uppercase text-muted-foreground">What needs doing?</Label>
+        <Input className="h-12 text-[1.0625rem] font-medium bg-secondary border-0 focus-visible:ring-1 tracking-[-0.01em]" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
       </div>
       <div className="space-y-2">
-        <Label className="text-base text-muted-foreground">Repeat every how many days?</Label>
-        <Input className="h-13 text-base bg-secondary border-0 focus-visible:ring-1" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
+        <Label className="text-[0.7rem] font-semibold tracking-widest uppercase text-muted-foreground">Repeat every how many days?</Label>
+        <Input className="h-12 text-[1.0625rem] font-medium bg-secondary border-0 focus-visible:ring-1" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
       </div>
       <div className="space-y-2">
-        <Label className="text-base text-muted-foreground">When did you last do this? <span className="text-muted-foreground/60">(optional)</span></Label>
-        <Input className="h-13 text-base bg-secondary border-0 focus-visible:ring-1" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
+        <Label className="text-[0.7rem] font-semibold tracking-widest uppercase text-muted-foreground">Last done <span className="normal-case tracking-normal font-normal opacity-60">(optional)</span></Label>
+        <Input className="h-12 text-[1.0625rem] font-medium bg-secondary border-0 focus-visible:ring-1" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
       </div>
     </div>
   )
@@ -255,14 +255,16 @@ export default function App() {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-end">
         <Toaster position="bottom-center" richColors />
-        <div className="px-8 pb-20 max-w-lg space-y-12">
-          <div>
-            <h1 className="text-7xl font-semibold tracking-tight leading-none">pomelo</h1>
-            <p className="text-muted-foreground mt-5 text-xl leading-relaxed">
+        <div className="px-8 pb-20 max-w-lg space-y-10">
+          <div className="space-y-4">
+            {/* Display — tight tracking at large size is optically correct */}
+            <h1 className="text-[5rem] font-bold tracking-[-0.04em] leading-none">pomelo</h1>
+            {/* Subhead — lighter weight, generous line-height for readability */}
+            <p className="text-[1.2rem] font-normal text-muted-foreground leading-[1.55]">
               A friendly reminder for things<br />you do on a regular schedule.
             </p>
           </div>
-          <Button className="w-full h-16 text-lg" onClick={login}>
+          <Button className="w-full h-[3.5rem] text-[1.0625rem] font-semibold tracking-[-0.01em]" onClick={login}>
             Continue with Google
           </Button>
         </div>
@@ -276,20 +278,21 @@ export default function App() {
       <div className="max-w-2xl mx-auto px-5 sm:px-8">
 
         {/* Header */}
-        <header className="flex items-center justify-between py-7 border-b border-border">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight">pomelo</h1>
+        <header className="flex items-center justify-between py-6 border-b border-border">
+          <div className="flex items-center gap-3.5">
+            {/* Wordmark — bold + very tight tracking is standard for logotype */}
+            <h1 className="text-[1.375rem] font-bold tracking-[-0.04em] leading-none">pomelo</h1>
             {overdueCount > 0 && (
-              <span className="text-sm text-red-500 bg-red-500/10 px-3 py-1 rounded-full">
+              <span className="text-[0.7rem] font-semibold tracking-wide uppercase text-red-500 bg-red-500/10 px-2.5 py-1 rounded-full">
                 {overdueCount} overdue
               </span>
             )}
             {syncState === 'syncing' && (
-              <div className="w-4 h-4 rounded-full border-2 border-foreground/15 border-t-foreground/50 animate-spin" />
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-foreground/15 border-t-foreground/50 animate-spin" />
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button className="h-11 px-5 text-base" onClick={openAdd}>
+            <Button className="h-10 px-4 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={openAdd}>
               <Plus className="w-4 h-4 mr-1.5" />
               Add task
             </Button>
@@ -308,8 +311,10 @@ export default function App() {
             <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-5">
               <Check className="w-6 h-6 text-muted-foreground" />
             </div>
-            <p className="font-semibold text-lg">Nothing here yet</p>
-            <p className="text-base text-muted-foreground mt-2">Add something you do regularly —<br />like changing a filter or taking a vitamin.</p>
+            <p className="text-[1.125rem] font-semibold tracking-[-0.02em]">Nothing here yet</p>
+            <p className="text-[0.9375rem] text-muted-foreground mt-2 leading-[1.6]">
+              Add something you do regularly —<br />like changing a filter or taking a vitamin.
+            </p>
           </div>
         )}
 
@@ -331,9 +336,12 @@ export default function App() {
                 <div className="flex items-center gap-4 flex-1 min-w-0 px-5 py-5">
                   {/* Name + status */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-lg font-medium truncate leading-snug">{task.name}</p>
-                    <p className={cn('text-sm mt-1', cfg.text)}>{dueLabel(task)}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{intervalLabel(task.intervalDays)}</p>
+                    {/* Primary — semibold + slight negative tracking reads crisply at this size */}
+                    <p className="text-[1.0625rem] font-semibold leading-snug tracking-[-0.015em] truncate">{task.name}</p>
+                    {/* Status — colored, medium weight, clear but subordinate */}
+                    <p className={cn('text-[0.8125rem] font-medium leading-none mt-1.5', cfg.text)}>{dueLabel(task)}</p>
+                    {/* Interval — tertiary, lightest visual weight */}
+                    <p className="text-[0.8125rem] font-normal text-muted-foreground leading-none mt-1">{intervalLabel(task.intervalDays)}</p>
                   </div>
 
                   {/* Actions */}
@@ -370,14 +378,14 @@ export default function App() {
         <Dialog open={!!snoozeTaskId} onOpenChange={open => !open && setSnoozeTaskId(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="text-xl">Snooze "{snoozeTask?.name}"</DialogTitle>
-              <p className="text-base text-muted-foreground">Come back to it after:</p>
+              <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em] leading-tight">Snooze "{snoozeTask?.name}"</DialogTitle>
+              <p className="text-[0.9375rem] text-muted-foreground leading-snug">Come back to it after:</p>
             </DialogHeader>
             <div className="space-y-3 py-2">
               <div className="flex gap-2">
                 {SNOOZE_PRESETS.map(p => (
                   <button key={p.days}
-                    className="flex-1 h-12 text-base border border-border rounded-xl hover:bg-secondary transition-colors"
+                    className="flex-1 h-12 text-[0.9375rem] font-medium tracking-[-0.01em] border border-border rounded-xl hover:bg-secondary transition-colors"
                     onClick={() => snooze(snoozeTaskId!, p.days)}>
                     {p.label}
                   </button>
@@ -401,12 +409,12 @@ export default function App() {
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="text-xl">Add a task</DialogTitle>
+              <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em]">Add a task</DialogTitle>
             </DialogHeader>
             <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
             <DialogFooter>
-              <Button variant="ghost" className="h-12 text-base" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button className="h-12 px-6 text-base" onClick={addTask}>Add task</Button>
+              <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button className="h-12 px-6 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={addTask}>Add task</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -415,24 +423,24 @@ export default function App() {
         <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="text-xl">Edit task</DialogTitle>
+              <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em]">Edit task</DialogTitle>
             </DialogHeader>
             {confirmDelete ? (
               <div className="py-3 space-y-5">
-                <p className="text-base text-muted-foreground">Delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This can't be undone.</p>
+                <p className="text-[0.9375rem] text-muted-foreground leading-relaxed">Delete <span className="font-semibold text-foreground">{editingTask?.name}</span>? This can't be undone.</p>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" className="h-12 text-base" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-                  <Button variant="destructive" className="h-12 text-base" onClick={() => editingTask && deleteTask(editingTask.id)}>Yes, delete it</Button>
+                  <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setConfirmDelete(false)}>Keep it</Button>
+                  <Button variant="destructive" className="h-12 text-[0.9375rem] font-semibold" onClick={() => editingTask && deleteTask(editingTask.id)}>Yes, delete it</Button>
                 </div>
               </div>
             ) : (
               <>
                 <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
                 <DialogFooter className="flex-row justify-between sm:justify-between">
-                  <Button variant="ghost" className="h-12 text-base text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>Delete</Button>
+                  <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>Delete</Button>
                   <div className="flex gap-2">
-                    <Button variant="ghost" className="h-12 text-base" onClick={() => setEditingTask(null)}>Cancel</Button>
-                    <Button className="h-12 px-6 text-base" onClick={saveEdit}>Save changes</Button>
+                    <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setEditingTask(null)}>Cancel</Button>
+                    <Button className="h-12 px-6 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={saveEdit}>Save changes</Button>
                   </div>
                 </DialogFooter>
               </>

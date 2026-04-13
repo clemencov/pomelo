@@ -1,3 +1,4 @@
+@import "@fontsource-variable/inter/wght.css";
 @import "tailwindcss";
 
 @theme inline {
@@ -23,6 +24,7 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
@@ -38,13 +40,13 @@
     --secondary: 36 15% 90%;
     --secondary-foreground: 20 15% 8%;
     --muted: 36 15% 90%;
-    --muted-foreground: 20 10% 38%;
+    --muted-foreground: 20 10% 42%;
     --accent: 36 15% 90%;
     --accent-foreground: 20 15% 8%;
     --destructive: 0 72% 48%;
     --destructive-foreground: 36 20% 96%;
-    --border: 30 12% 82%;
-    --input: 30 12% 82%;
+    --border: 30 12% 84%;
+    --input: 30 12% 84%;
     --ring: 20 15% 8%;
     --radius: 0.6rem;
   }
@@ -74,8 +76,13 @@
 @layer base {
   * { border-color: hsl(var(--border)); }
   body {
+    font-family: var(--font-sans);
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* Inter's optical features: open a/g, disambiguated chars, tabular nums for dates */
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss02";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 }
