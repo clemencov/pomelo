@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loadTasks, saveTasks, daysUntilDue } from './store'
 import type { Task } from './types'
-import { Check, Pencil, Plus, Clock, AlertTriangle, BellOff, LogOut, RefreshCw } from 'lucide-react'
+import { Check, Pencil, Plus, Clock, AlertTriangle, BellOff, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster, toast } from 'sonner'
 
@@ -239,21 +239,24 @@ export default function App() {
   if (user === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <RefreshCw className="w-5 h-5 text-muted-foreground animate-spin" />
+        <div className="w-5 h-5 rounded-full border-2 border-foreground/15 border-t-foreground/60 animate-spin" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-8 px-6 max-w-sm">
+      <div className="min-h-screen bg-background flex flex-col justify-end">
+        <Toaster position="bottom-center" richColors />
+        <div className="px-8 pb-16 max-w-sm space-y-10">
           <div>
-            <h1 className="text-5xl font-semibold tracking-tight">pomelo</h1>
-            <p className="text-muted-foreground mt-3">A simple way to stay on top of<br />things that need doing regularly.</p>
+            <h1 className="text-6xl font-semibold tracking-tight leading-none">pomelo</h1>
+            <p className="text-muted-foreground mt-4 text-base leading-relaxed">
+              Stay on top of things that need doing on a schedule.
+            </p>
           </div>
-          <Button className="w-full h-11" onClick={login}>
-            Sign in with Google
+          <Button className="w-full h-12 text-base" onClick={login}>
+            Continue with Google
           </Button>
         </div>
       </div>
@@ -266,24 +269,26 @@ export default function App() {
       <div className="max-w-2xl mx-auto px-6">
 
         {/* Header */}
-        <header className="flex items-center justify-between py-8 border-b border-border">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold tracking-tight">pomelo</h1>
+        <header className="flex items-center justify-between py-5 border-b border-border">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold tracking-tight">pomelo</h1>
             {overdueCount > 0 && (
-              <span className="font-mono text-xs text-red-500 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded">
+              <span className="font-mono text-xs text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
                 {overdueCount} overdue
               </span>
             )}
+            {syncState === 'syncing' && (
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-foreground/15 border-t-foreground/50 animate-spin" />
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            {syncState === 'syncing' && <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin mr-2" />}
-            <Button size="sm" className="text-sm h-8 px-3" onClick={openAdd}>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" className="h-8 px-3 text-sm" onClick={openAdd}>
               <Plus className="w-3.5 h-3.5 mr-1" />
-              Add task
+              Add
             </Button>
-            <div className="flex items-center gap-1 ml-2 pl-2 border-l border-border">
-              <img src={user.photoURL ?? ''} alt="" className="w-6 h-6 rounded-full opacity-80" />
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={logout}>
+            <div className="flex items-center gap-1 pl-2 border-l border-border">
+              <img src={user.photoURL ?? ''} alt="" className="w-6 h-6 rounded-full opacity-75" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={logout}>
                 <LogOut className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -292,68 +297,64 @@ export default function App() {
 
         {/* Empty state */}
         {sorted.length === 0 && (
-          <div className="text-center py-32 text-muted-foreground">
-            <p className="text-base">Nothing here yet.</p>
-            <p className="text-sm mt-1.5">Add a task you do regularly — like changing a filter or running a backup.</p>
+          <div className="flex flex-col items-center py-32 text-center">
+            <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center mb-4">
+              <Check className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <p className="font-medium text-sm">Nothing scheduled yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Add tasks you do on a regular cycle.</p>
           </div>
         )}
 
         {/* Task list */}
-        <div className="divide-y divide-border">
+        <div className="space-y-2 py-4">
           {sorted.map(task => {
             const u = urgency(task)
             const cfg = urgencyConfig[u]
             const snoozed = u === 'snoozed'
-            const dueDate = task.lastDone
-              ? new Date(new Date(task.lastDone).getTime() + task.intervalDays * 86400000)
-              : null
 
             return (
-              <div key={task.id} className={cn('flex items-center gap-5 py-5 group', snoozed && 'opacity-40')}>
-                {/* Status dot */}
-                <div className={cn('w-2 h-2 rounded-full shrink-0 mt-0.5', cfg.dot)} />
+              <div key={task.id} className={cn(
+                'flex items-center rounded-xl border border-border bg-card overflow-hidden group transition-opacity',
+                snoozed && 'opacity-50'
+              )}>
+                {/* Left accent bar */}
+                <div className={cn('w-1 self-stretch shrink-0', cfg.dot)} />
 
-                {/* Name + interval */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{task.name}</p>
-                  <p className="font-mono text-xs text-muted-foreground mt-0.5">{intervalLabel(task.intervalDays)}</p>
-                </div>
+                <div className="flex items-center gap-3 flex-1 min-w-0 px-4 py-3.5">
+                  {/* Name + status */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate leading-snug">{task.name}</p>
+                    <p className={cn('text-xs mt-0.5 font-mono', cfg.text)}>{dueLabel(task)}</p>
+                  </div>
 
-                {/* Dates */}
-                <div className="text-right shrink-0 hidden sm:block">
-                  <p className={cn('font-mono text-sm', cfg.text)}>{dueLabel(task)}</p>
-                  <p className="font-mono text-xs text-muted-foreground mt-0.5">
-                    {task.lastDone
-                      ? `last ${new Date(task.lastDone).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-                      : '—'
-                    }
-                    {dueDate && !snoozed ? ` · ${dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : ''}
-                  </p>
-                </div>
+                  {/* Interval */}
+                  <span className="font-mono text-xs text-muted-foreground shrink-0">{intervalLabel(task.intervalDays)}</span>
 
-                {/* Actions */}
-                <div className="flex items-center gap-0.5 shrink-0 opacity-30 group-hover:opacity-100 transition-opacity">
-                  <button
-                    className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-emerald-600 hover:bg-secondary transition-colors"
-                    onClick={() => markDone(task)} title="Mark done"
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                  {snoozed ? (
-                    <button className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      onClick={() => unsnooze(task.id)} title="Unsnooze">
-                      <BellOff className="w-4 h-4" />
+                  {/* Actions */}
+                  <div className="flex items-center gap-0.5 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <button
+                      className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-secondary transition-colors"
+                      onClick={() => markDone(task)} title="Mark done"
+                    >
+                      <Check className="w-4 h-4" />
                     </button>
-                  ) : (
-                    <button className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }} title="Snooze">
-                      <BellOff className="w-4 h-4" />
+                    {snoozed ? (
+                      <button className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        onClick={() => unsnooze(task.id)} title="Unsnooze">
+                        <BellOff className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }} title="Snooze">
+                        <BellOff className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                      onClick={() => openEdit(task)} title="Edit">
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
-                  )}
-                  <button className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                    onClick={() => openEdit(task)} title="Edit">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  </div>
                 </div>
               </div>
             )
