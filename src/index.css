@@ -1,7 +1,9 @@
-/* UI text — Plus Jakarta Sans Variable (more character than Inter) */
+/* UI text — Plus Jakarta Sans Variable */
 @import "@fontsource-variable/plus-jakarta-sans/wght.css";
-/* Display / wordmark — Fraunces Variable (warm optical serif, italic) */
-@import "@fontsource-variable/fraunces/wght-italic.css";
+/* Task titles — Outfit Variable (geometric, clean, modern) */
+@import "@fontsource-variable/outfit/wght.css";
+/* Logo / wordmark — Playfair Display Variable italic (high-contrast editorial serif) */
+@import "@fontsource-variable/playfair-display/wght-italic.css";
 @import "tailwindcss";
 
 @theme inline {
@@ -30,22 +32,23 @@
   --radius-lg: var(--radius);
   /* UI font */
   --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  /* Display / wordmark font */
-  --font-display: "Fraunces Variable", Georgia, serif;
+  /* Task titles */
+  --font-task: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Logo / wordmark */
+  --font-display: "Playfair Display Variable", Georgia, serif;
 }
 
 @layer base {
   :root {
-    /* Clean warm white */
     --background: 40 18% 97%;
     --foreground: 220 14% 10%;
     --card: 0 0% 100%;
     --card-foreground: 220 14% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 14% 10%;
-    /* Brand — terracotta, warm citrus clay */
-    --brand: 16 70% 50%;
-    --primary: 16 70% 50%;
+    /* Brand — deep indigo */
+    --brand: 248 52% 50%;
+    --primary: 248 52% 50%;
     --primary-foreground: 0 0% 100%;
     --secondary: 40 10% 93%;
     --secondary-foreground: 220 14% 10%;
@@ -57,7 +60,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 36 10% 88%;
     --input: 36 10% 88%;
-    --ring: 16 70% 50%;
+    --ring: 248 52% 50%;
     --radius: 1rem;
   }
 
@@ -68,8 +71,8 @@
     --card-foreground: 40 12% 93%;
     --popover: 220 12% 10%;
     --popover-foreground: 40 12% 93%;
-    --brand: 18 72% 62%;
-    --primary: 18 72% 62%;
+    --brand: 248 62% 68%;
+    --primary: 248 62% 68%;
     --primary-foreground: 220 14% 7%;
     --secondary: 220 8% 14%;
     --secondary-foreground: 40 12% 93%;
@@ -81,7 +84,7 @@
     --destructive-foreground: 40 12% 93%;
     --border: 220 8% 17%;
     --input: 220 8% 17%;
-    --ring: 18 72% 62%;
+    --ring: 248 62% 68%;
   }
 }
 

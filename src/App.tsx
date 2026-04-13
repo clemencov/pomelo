@@ -13,15 +13,13 @@ import { Check, Pencil, Plus, BellOff, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster, toast } from 'sonner'
 
-// ── Fraunces italic display style ─────────────────────────────────────────
-// Applied via inline style to get the full variable font axes
-const fraunces = (size: string | number, weight = 700, opsz = 80): React.CSSProperties => ({
-  fontFamily: '"Fraunces Variable", Georgia, serif',
+// ── Playfair Display italic display style ────────────────────────────────
+const playfair = (size: string | number, weight = 700): React.CSSProperties => ({
+  fontFamily: '"Playfair Display Variable", Georgia, serif',
   fontStyle: 'italic',
-  fontVariationSettings: `"opsz" ${opsz}, "SOFT" 80`,
   fontWeight: weight,
   fontSize: typeof size === 'number' ? `${size}rem` : size,
-  letterSpacing: '-0.03em',
+  letterSpacing: '-0.02em',
   lineHeight: '0.9',
 })
 
@@ -269,7 +267,7 @@ export default function App() {
       <div className="min-h-screen bg-background flex flex-col">
         <Toaster position="bottom-center" richColors />
         <div className="flex-1" />
-        <div className="px-8 pb-20 sm:pb-28 max-w-3xl">
+        <div className="px-8 pb-20 sm:pb-28 max-w-2xl">
           <div className="mb-14">
             {/*
               Fraunces Variable italic at high optical size (opsz 144) — the letterforms
@@ -278,7 +276,7 @@ export default function App() {
             */}
             <h1
               style={{
-                ...fraunces('clamp(5.5rem, 24vw, 10rem)', 800, 144),
+                ...playfair('clamp(5.5rem, 24vw, 10rem)', 800, 144),
                 color: 'hsl(var(--brand))',
               }}
             >
@@ -301,14 +299,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background pb-36">
       <Toaster position="bottom-center" richColors />
-      <div className="max-w-3xl mx-auto px-5 sm:px-8">
+      <div className="max-w-2xl mx-auto px-5 sm:px-8">
 
         {/* Header */}
         <header className="flex items-center justify-between pt-9 pb-7">
           <div className="flex items-center gap-3">
             {/* Fraunces at smaller opsz — adapts letterform weight to display context */}
             <h1
-              style={{ ...fraunces('2rem', 700, 48), color: 'hsl(var(--brand))' }}
+              style={{ ...playfair('2rem', 700, 48), color: 'hsl(var(--brand))' }}
             >
               pomelo
             </h1>
@@ -365,8 +363,8 @@ export default function App() {
                 <div className="flex items-center px-6 py-6 gap-4">
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    {/* Task name — hero text, should feel important */}
-                    <p className="text-[1.5rem] font-[650] tracking-[-0.025em] leading-[1.2] truncate">
+                    {/* Task name — Outfit geometric sans, hero size */}
+                    <p className="text-[1.5rem] font-[600] tracking-[-0.02em] leading-[1.2] truncate font-task">
                       {task.name}
                     </p>
                     {/* Status + interval — one scannable line */}
