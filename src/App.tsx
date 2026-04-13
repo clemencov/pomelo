@@ -276,7 +276,7 @@ export default function App() {
             */}
             <h1
               style={{
-                ...playfair('clamp(5.5rem, 24vw, 10rem)', 800, 144),
+                ...playfair('clamp(5.5rem, 24vw, 10rem)', 800),
                 color: 'hsl(var(--brand))',
               }}
             >
@@ -306,7 +306,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             {/* Fraunces at smaller opsz — adapts letterform weight to display context */}
             <h1
-              style={{ ...playfair('2rem', 700, 48), color: 'hsl(var(--brand))' }}
+              style={{ ...playfair('2rem', 700), color: 'hsl(var(--brand))' }}
             >
               pomelo
             </h1>
