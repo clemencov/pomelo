@@ -269,7 +269,7 @@ export default function App() {
       <div className="min-h-screen bg-background flex flex-col">
         <Toaster position="bottom-center" richColors />
         <div className="flex-1" />
-        <div className="px-8 pb-20 sm:pb-28 max-w-lg">
+        <div className="px-8 pb-20 sm:pb-28 max-w-3xl">
           <div className="mb-14">
             {/*
               Fraunces Variable italic at high optical size (opsz 144) — the letterforms
@@ -301,7 +301,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background pb-36">
       <Toaster position="bottom-center" richColors />
-      <div className="max-w-lg mx-auto px-5 sm:px-8">
+      <div className="max-w-3xl mx-auto px-5 sm:px-8">
 
         {/* Header */}
         <header className="flex items-center justify-between pt-9 pb-7">
