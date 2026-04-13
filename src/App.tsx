@@ -131,7 +131,8 @@ export default function App() {
   }
 
   async function login() {
-    try { await signInWithRedirect(auth, googleProvider) } catch (e) { console.error(e) }
+    try { await signInWithRedirect(auth, googleProvider) }
+    catch (e: unknown) { const msg = e instanceof Error ? e.message : String(e); console.error(e); toast.error('Sign-in failed: ' + msg) }
   }
   async function logout() { await signOut(auth); setUser(null) }
 
