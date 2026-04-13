@@ -113,11 +113,12 @@ export default function App() {
   const syncToFirestore = useCallback((t: Task[]) => {
     if (!user || user === 'loading') return
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
-    saveTimeout.current = setTimeout(async () => {
-      setSyncState('syncing')
-      try { await saveToFirestore(user.uid, t); setSyncState('idle') }
-      catch (err) { console.error('Firestore write error:', err); setSyncState('error') }
-    }, 1000)
+    saveTimeout.current = setTimeout(() => {
+      saveToFirestore(user.uid, t).catch((err) => {
+        console.error('Firestore write error:', err)
+        setSyncState('error')
+      })
+    }, 300)
   }, [user])
 
   function updateTasks(updated: Task[]) {
