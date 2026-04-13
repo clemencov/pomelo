@@ -111,8 +111,8 @@ export default function App() {
         setSyncState('syncing')
         connectTimeout = setTimeout(() => {
           setSyncState('idle')
-          toast.error("Can't reach sync server — working offline")
-        }, 10000)
+          toast.error("Can't reach sync server — will retry in background", { duration: 6000 })
+        }, 15000)
 
         unsubFirestore = onSnapshot(
           doc(db, 'users', u.uid),
