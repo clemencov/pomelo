@@ -129,8 +129,7 @@ export default function App() {
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight flex items-center gap-3">
-              <RefreshCw className="w-8 h-8 text-slate-400" />
+            <h1 className="text-4xl font-semibold tracking-tight">
               pomelo
             </h1>
             {overdueCount > 0 && (
