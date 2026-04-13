@@ -95,8 +95,7 @@ export default function App() {
         unsubFirestore = onSnapshot(
           doc(db, 'users', u.uid),
           (snap) => {
-            if (snap.metadata.hasPendingWrites) return
-            if (snap.exists()) {
+            if (!snap.metadata.hasPendingWrites && snap.exists()) {
               const data = snap.data() as { tasks: Task[] }
               const t = data.tasks.map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
               setTasks(t); saveTasks(t)
