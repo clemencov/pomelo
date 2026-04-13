@@ -21,6 +21,7 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-brand: hsl(var(--brand));
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -29,47 +30,52 @@
 
 @layer base {
   :root {
-    --background: 36 20% 96%;
-    --foreground: 20 15% 8%;
-    --card: 36 20% 99%;
-    --card-foreground: 20 15% 8%;
-    --popover: 36 20% 99%;
-    --popover-foreground: 20 15% 8%;
-    --primary: 20 15% 8%;
-    --primary-foreground: 36 20% 96%;
-    --secondary: 36 15% 90%;
-    --secondary-foreground: 20 15% 8%;
-    --muted: 36 15% 90%;
-    --muted-foreground: 20 10% 42%;
-    --accent: 36 15% 90%;
-    --accent-foreground: 20 15% 8%;
-    --destructive: 0 72% 48%;
-    --destructive-foreground: 36 20% 96%;
-    --border: 30 12% 84%;
-    --input: 30 12% 84%;
-    --ring: 20 15% 8%;
-    --radius: 0.6rem;
+    /* Off-white base — barely warm, clean */
+    --background: 50 14% 97%;
+    --foreground: 18 10% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 18 10% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 18 10% 9%;
+    /* Brand — pomelo citrus green */
+    --brand: 92 38% 34%;
+    --primary: 92 38% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 8% 93%;
+    --secondary-foreground: 18 10% 9%;
+    --muted: 48 8% 93%;
+    --muted-foreground: 20 5% 44%;
+    --accent: 48 8% 93%;
+    --accent-foreground: 18 10% 9%;
+    --destructive: 4 70% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 8% 90%;
+    --input: 40 8% 90%;
+    --ring: 92 38% 34%;
+    --radius: 0.75rem;
   }
+
   .dark {
-    --background: 20 12% 7%;
-    --foreground: 36 15% 94%;
-    --card: 20 12% 10%;
-    --card-foreground: 36 15% 94%;
-    --popover: 20 12% 10%;
-    --popover-foreground: 36 15% 94%;
-    --primary: 36 15% 94%;
-    --primary-foreground: 20 12% 7%;
-    --secondary: 20 10% 14%;
-    --secondary-foreground: 36 15% 94%;
-    --muted: 20 10% 14%;
-    --muted-foreground: 30 8% 58%;
-    --accent: 20 10% 14%;
-    --accent-foreground: 36 15% 94%;
-    --destructive: 0 62% 42%;
-    --destructive-foreground: 36 15% 94%;
-    --border: 20 10% 22%;
-    --input: 20 10% 22%;
-    --ring: 36 15% 94%;
+    --background: 224 13% 8%;
+    --foreground: 50 10% 93%;
+    --card: 224 11% 11%;
+    --card-foreground: 50 10% 93%;
+    --popover: 224 11% 11%;
+    --popover-foreground: 50 10% 93%;
+    --brand: 90 44% 58%;
+    --primary: 90 44% 58%;
+    --primary-foreground: 224 13% 8%;
+    --secondary: 224 8% 15%;
+    --secondary-foreground: 50 10% 93%;
+    --muted: 224 8% 15%;
+    --muted-foreground: 222 6% 50%;
+    --accent: 224 8% 15%;
+    --accent-foreground: 50 10% 93%;
+    --destructive: 4 62% 42%;
+    --destructive-foreground: 50 10% 93%;
+    --border: 222 8% 17%;
+    --input: 222 8% 17%;
+    --ring: 90 44% 58%;
   }
 }
 
@@ -79,8 +85,8 @@
     font-family: var(--font-sans);
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    /* Inter's optical features: open a/g, disambiguated chars, tabular nums for dates */
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss02";
+    /* Inter: open a/g, disambiguated l/I/1, tabular nums, contextual alternates */
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "ss02";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;

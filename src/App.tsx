@@ -58,11 +58,11 @@ function toDateInput(iso: string | null): string {
 }
 
 const urgencyConfig = {
-  overdue: { card: 'bg-red-500/[0.07] border-red-500/[0.18]',   text: 'text-red-600 dark:text-red-400' },
-  soon:    { card: 'bg-amber-400/[0.07] border-amber-500/[0.2]', text: 'text-amber-600 dark:text-amber-400' },
-  ok:      { card: 'bg-card border-border',                       text: 'text-emerald-700 dark:text-emerald-400' },
-  new:     { card: 'bg-card border-border',                       text: 'text-muted-foreground' },
-  snoozed: { card: 'bg-card border-border',                       text: 'text-muted-foreground' },
+  overdue: { card: 'bg-red-500/[0.06] border-red-500/[0.16]',    text: 'text-red-600 dark:text-red-400' },
+  soon:    { card: 'bg-amber-400/[0.07] border-amber-500/[0.18]', text: 'text-amber-600 dark:text-amber-400' },
+  ok:      { card: 'bg-card border-border',                        text: 'text-brand' },
+  new:     { card: 'bg-card border-border',                        text: 'text-muted-foreground' },
+  snoozed: { card: 'bg-card border-border',                        text: 'text-muted-foreground' },
 }
 
 const SNOOZE_PRESETS = [
@@ -258,21 +258,21 @@ export default function App() {
         <Toaster position="bottom-center" richColors />
         <div className="flex-1" />
         <div className="px-8 pb-20 sm:pb-28 max-w-lg">
-          <div className="mb-12">
-            {/* Display wordmark — scales with viewport, tight tracking at large size */}
+          <div className="mb-14">
+            {/* Brand wordmark — extrabold display, tight tracking, brand color */}
             <h1
-              className="font-bold tracking-[-0.05em] leading-[0.88]"
-              style={{ fontSize: 'clamp(4.5rem, 20vw, 7.5rem)' }}
+              className="font-[800] tracking-[-0.06em] leading-[0.86] text-brand"
+              style={{ fontSize: 'clamp(5rem, 22vw, 9rem)' }}
             >
               pomelo
             </h1>
-            <p className="mt-6 text-[1.125rem] text-muted-foreground leading-[1.65]">
-              A quiet reminder for everything
-              <br />you do on a regular schedule.
+            {/* Subhead — light weight against heavy wordmark creates clear hierarchy */}
+            <p className="mt-7 text-[1.0625rem] text-muted-foreground leading-[1.72] font-[380]">
+              A quiet reminder for the things<br />you do on a regular schedule.
             </p>
           </div>
           <Button
-            className="w-full h-14 text-[1.0625rem] font-semibold tracking-[-0.01em]"
+            className="w-full h-[3.5rem] text-[1rem] font-semibold tracking-[0.005em]"
             onClick={login}
           >
             Continue with Google
@@ -291,7 +291,7 @@ export default function App() {
         {/* Header */}
         <header className="flex items-center justify-between pt-8 pb-6">
           <div className="flex items-center gap-3">
-            <h1 className="text-[1.5rem] font-bold tracking-[-0.04em] leading-none">pomelo</h1>
+            <h1 className="text-[1.5rem] font-[800] tracking-[-0.05em] leading-none text-brand">pomelo</h1>
             {syncState === 'syncing' && (
               <div className="w-2 h-2 rounded-full bg-foreground/25 animate-pulse" />
             )}
@@ -318,12 +318,12 @@ export default function App() {
 
         {/* Empty state */}
         {sorted.length === 0 && (
-          <div className="pt-12 pb-8">
-            <p className="text-[1.75rem] font-bold tracking-[-0.03em] leading-[1.2] text-balance">
-              Nothing scheduled yet
+          <div className="pt-14 pb-8">
+            <p className="text-[2rem] font-[760] tracking-[-0.035em] leading-[1.15] text-balance">
+              Nothing to track yet
             </p>
-            <p className="mt-3 text-[1rem] text-muted-foreground leading-[1.6]">
-              Tap the + button to add your first recurring task.
+            <p className="mt-4 text-[1rem] text-muted-foreground leading-[1.65] font-[400]">
+              Tap the + to add something you do<br />on a regular schedule.
             </p>
           </div>
         )}
@@ -344,22 +344,22 @@ export default function App() {
                   snoozed && 'opacity-50'
                 )}
               >
-                <div className="flex items-center px-5 py-5 gap-3">
+                <div className="flex items-center px-6 py-[1.125rem] gap-3">
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[1.1875rem] font-semibold tracking-[-0.02em] leading-snug truncate">
+                    <p className="text-[1.25rem] font-[640] tracking-[-0.025em] leading-snug truncate">
                       {task.name}
                     </p>
-                    <p className="mt-1.5 text-[0.875rem] leading-none">
-                      <span className={cn('font-medium', cfg.text)}>{dueLabel(task)}</span>
-                      <span className="text-muted-foreground"> · {intervalLabel(task.intervalDays)}</span>
+                    <p className="mt-[0.4rem] text-[0.875rem] leading-none">
+                      <span className={cn('font-[520]', cfg.text)}>{dueLabel(task)}</span>
+                      <span className="text-muted-foreground font-normal"> · {intervalLabel(task.intervalDays)}</span>
                     </p>
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-0.5 shrink-0">
                     <button
-                      className="h-11 w-11 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors"
+                      className="h-11 w-11 rounded-xl flex items-center justify-center text-brand hover:bg-brand/10 active:bg-brand/15 transition-colors"
                       onClick={() => markDone(task)}
                       title="Mark done"
                     >
@@ -399,7 +399,7 @@ export default function App() {
 
       {/* FAB — floating add button, always thumb-reachable */}
       <button
-        className="fixed bottom-8 right-6 h-14 w-14 rounded-full bg-foreground text-background shadow-lg shadow-foreground/10 flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+        className="fixed bottom-8 right-6 h-14 w-14 rounded-full bg-brand text-white shadow-lg shadow-brand/25 flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
         onClick={openAdd}
         title="Add task"
       >
