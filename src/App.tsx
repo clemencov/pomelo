@@ -23,6 +23,7 @@ export default function App() {
   const [showLog, setShowLog] = useState(false)
   const [name, setName] = useState('')
   const [interval, setInterval] = useState('30')
+  const [lastDone, setLastDone] = useState('')
 
   function addTask() {
     if (!name.trim()) return
@@ -30,13 +31,14 @@ export default function App() {
       id: crypto.randomUUID(),
       name: name.trim(),
       intervalDays: parseInt(interval) || 30,
-      lastDone: null,
+      lastDone: lastDone ? new Date(lastDone).toISOString() : null,
     }
     const updated = [...tasks, task]
     setTasks(updated)
     saveTasks(updated)
     setName('')
     setInterval('30')
+    setLastDone('')
     setShowAdd(false)
   }
 
@@ -104,6 +106,10 @@ export default function App() {
             <div className="space-y-1">
               <Label>Repeat every (days)</Label>
               <Input type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Last done <span className="text-muted-foreground">(optional)</span></Label>
+              <Input type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={new Date().toISOString().split('T')[0]} />
             </div>
           </div>
           <DialogFooter>
