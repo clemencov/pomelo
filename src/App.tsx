@@ -193,17 +193,15 @@ export default function App() {
   const TaskForm = () => (
     <div className="space-y-5 py-2">
       <div className="space-y-1.5">
-        <Label className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Name</Label>
+        <Label className="text-sm text-muted-foreground">What needs doing?</Label>
         <Input className="h-11 bg-secondary border-0 focus-visible:ring-1" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Repeat every (days)</Label>
+        <Label className="text-sm text-muted-foreground">Repeat every (days)</Label>
         <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-sm font-mono text-muted-foreground uppercase tracking-wider">
-          Last done <span className="normal-case tracking-normal font-sans">(optional)</span>
-        </Label>
+        <Label className="text-sm text-muted-foreground">Last done <span className="text-muted-foreground/60">(optional)</span></Label>
         <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
       </div>
     </div>
@@ -222,12 +220,11 @@ export default function App() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-8 px-6 max-w-sm">
           <div>
-            <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase mb-3">v0.1</p>
             <h1 className="text-5xl font-semibold tracking-tight">pomelo</h1>
-            <p className="text-muted-foreground mt-3">Track recurring maintenance tasks.<br />Never forget what needs doing.</p>
+            <p className="text-muted-foreground mt-3">A simple way to stay on top of<br />things that need doing regularly.</p>
           </div>
-          <Button className="w-full h-11 font-mono tracking-wide" onClick={login}>
-            Sign in with Google →
+          <Button className="w-full h-11" onClick={login}>
+            Sign in with Google
           </Button>
         </div>
       </div>
@@ -251,12 +248,12 @@ export default function App() {
           <div className="flex items-center gap-1">
             {syncState === 'syncing' && <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin mr-2" />}
             {syncState === 'error' && <span className="font-mono text-xs text-red-500 mr-2">sync error</span>}
-            <Button variant="ghost" size="sm" className="text-muted-foreground font-mono text-sm h-8 px-3" onClick={() => setShowLog(true)}>
-              log
+            <Button variant="ghost" size="sm" className="text-muted-foreground text-sm h-8 px-3" onClick={() => setShowLog(true)}>
+              History
             </Button>
-            <Button size="sm" className="font-mono text-sm h-8 px-3" onClick={openAdd}>
+            <Button size="sm" className="text-sm h-8 px-3" onClick={openAdd}>
               <Plus className="w-3.5 h-3.5 mr-1" />
-              new task
+              Add task
             </Button>
             <div className="flex items-center gap-1 ml-2 pl-2 border-l border-border">
               <img src={user.photoURL ?? ''} alt="" className="w-6 h-6 rounded-full opacity-80" />
@@ -270,8 +267,8 @@ export default function App() {
         {/* Empty state */}
         {sorted.length === 0 && (
           <div className="text-center py-32 text-muted-foreground">
-            <p className="font-mono text-sm">no tasks yet</p>
-            <p className="text-sm mt-1">add something you do regularly</p>
+            <p className="text-base">Nothing here yet.</p>
+            <p className="text-sm mt-1.5">Add a task you do regularly — like changing a filter or running a backup.</p>
           </div>
         )}
 
@@ -309,7 +306,7 @@ export default function App() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-0.5 shrink-0 opacity-30 group-hover:opacity-100 transition-opacity">
                   <button
                     className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-emerald-600 hover:bg-secondary transition-colors"
                     onClick={() => markDone(task)} title="Mark done"
@@ -341,8 +338,8 @@ export default function App() {
         <Dialog open={!!snoozeTaskId} onOpenChange={open => !open && setSnoozeTaskId(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">Snooze</DialogTitle>
-              <p className="font-medium text-base pt-0.5">{snoozeTask?.name}</p>
+              <DialogTitle className="text-base">Snooze "{snoozeTask?.name}"</DialogTitle>
+              <p className="text-sm text-muted-foreground">Remind you again after:</p>
             </DialogHeader>
             <div className="space-y-3 py-2">
               <div className="flex gap-2">
@@ -356,12 +353,12 @@ export default function App() {
               </div>
               <div className="flex gap-2">
                 <Input className="h-10 font-mono bg-secondary border-0 focus-visible:ring-1" type="date" value={customSnooze} min={today} onChange={e => setCustomSnooze(e.target.value)} />
-                <Button className="h-10 px-4 font-mono text-sm shrink-0" disabled={!customSnooze}
+                <Button className="h-10 px-4 text-sm shrink-0" disabled={!customSnooze}
                   onClick={() => {
                     const days = Math.round((new Date(customSnooze).getTime() - Date.now()) / 86400000)
                     if (days > 0) snooze(snoozeTaskId!, days)
                   }}>
-                  snooze →
+                  Snooze
                 </Button>
               </div>
             </div>
@@ -372,12 +369,12 @@ export default function App() {
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">New task</DialogTitle>
+              <DialogTitle>Add a task</DialogTitle>
             </DialogHeader>
             <TaskForm />
             <DialogFooter>
-              <Button variant="ghost" className="font-mono text-sm h-10" onClick={() => setShowAdd(false)}>cancel</Button>
-              <Button className="font-mono text-sm h-10 px-5" onClick={addTask}>add task →</Button>
+              <Button variant="ghost" className="h-10" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button className="h-10 px-5" onClick={addTask}>Add task</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -386,24 +383,24 @@ export default function App() {
         <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">Edit task</DialogTitle>
+              <DialogTitle>Edit task</DialogTitle>
             </DialogHeader>
             {confirmDelete ? (
               <div className="py-3 space-y-4">
-                <p className="text-sm text-muted-foreground">Delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This cannot be undone.</p>
+                <p className="text-sm text-muted-foreground">Delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This can't be undone.</p>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" className="font-mono text-sm h-10" onClick={() => setConfirmDelete(false)}>cancel</Button>
-                  <Button variant="destructive" className="font-mono text-sm h-10" onClick={() => editingTask && deleteTask(editingTask.id)}>delete →</Button>
+                  <Button variant="ghost" className="h-10" onClick={() => setConfirmDelete(false)}>Keep it</Button>
+                  <Button variant="destructive" className="h-10" onClick={() => editingTask && deleteTask(editingTask.id)}>Yes, delete</Button>
                 </div>
               </div>
             ) : (
               <>
                 <TaskForm />
                 <DialogFooter className="flex-row justify-between sm:justify-between">
-                  <Button variant="ghost" className="font-mono text-sm h-10 text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>delete</Button>
+                  <Button variant="ghost" className="h-10 text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>Delete</Button>
                   <div className="flex gap-2">
-                    <Button variant="ghost" className="font-mono text-sm h-10" onClick={() => setEditingTask(null)}>cancel</Button>
-                    <Button className="font-mono text-sm h-10 px-5" onClick={saveEdit}>save →</Button>
+                    <Button variant="ghost" className="h-10" onClick={() => setEditingTask(null)}>Cancel</Button>
+                    <Button className="h-10 px-5" onClick={saveEdit}>Save changes</Button>
                   </div>
                 </DialogFooter>
               </>
@@ -415,10 +412,10 @@ export default function App() {
         <Dialog open={showLog} onOpenChange={setShowLog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-mono text-sm text-muted-foreground font-normal uppercase tracking-wider">History</DialogTitle>
+              <DialogTitle>History</DialogTitle>
             </DialogHeader>
             <div className="max-h-96 overflow-y-auto -mx-1 px-1">
-              {log.length === 0 && <p className="font-mono text-sm text-muted-foreground text-center py-8">no entries yet</p>}
+              {log.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nothing logged yet — mark a task as done to start.</p>}
               <div className="divide-y divide-border">
                 {log.map(entry => (
                   <div key={entry.id} className="flex items-center justify-between py-3">
