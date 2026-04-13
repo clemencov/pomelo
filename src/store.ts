@@ -1,7 +1,6 @@
-import type { Task, LogEntry } from './types'
+import type { Task } from './types'
 
 const TASKS_KEY = 'pomelo:tasks'
-const LOG_KEY = 'pomelo:log'
 
 export function loadTasks(): Task[] {
   try {
@@ -15,17 +14,6 @@ export function saveTasks(tasks: Task[]) {
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
 }
 
-export function loadLog(): LogEntry[] {
-  try {
-    return JSON.parse(localStorage.getItem(LOG_KEY) || '[]')
-  } catch {
-    return []
-  }
-}
-
-export function saveLog(log: LogEntry[]) {
-  localStorage.setItem(LOG_KEY, JSON.stringify(log))
-}
 
 export function daysUntilDue(task: Task): number {
   if (!task.lastDone) return 0

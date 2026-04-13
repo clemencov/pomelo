@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { loadTasks, saveTasks, loadLog, saveLog, daysUntilDue } from './store'
-import type { Task, LogEntry } from './types'
+import { loadTasks, saveTasks, daysUntilDue } from './store'
+import type { Task } from './types'
 import { Check, Pencil, Plus, Clock, AlertTriangle, BellOff, LogOut, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -65,8 +65,8 @@ const SNOOZE_PRESETS = [
 
 type SyncState = 'idle' | 'syncing' | 'error'
 
-async function saveToFirestore(uid: string, tasks: Task[], log: LogEntry[]) {
-  await setDoc(doc(db, 'users', uid), { tasks, log })
+async function saveToFirestore(uid: string, tasks: Task[]) {
+  await setDoc(doc(db, 'users', uid), { tasks })
 }
 
 export default function App() {
@@ -74,11 +74,9 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>(() =>
     loadTasks().map(t => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
   )
-  const [log, setLog] = useState<LogEntry[]>(loadLog)
   const [syncState, setSyncState] = useState<SyncState>('idle')
 
   const [showAdd, setShowAdd] = useState(false)
-  const [showLog, setShowLog] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [snoozeTaskId, setSnoozeTaskId] = useState<string | null>(null)
@@ -99,10 +97,9 @@ export default function App() {
           (snap) => {
             if (snap.metadata.hasPendingWrites) return
             if (snap.exists()) {
-              const data = snap.data() as { tasks: Task[]; log: LogEntry[] }
+              const data = snap.data() as { tasks: Task[] }
               const t = data.tasks.map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
               setTasks(t); saveTasks(t)
-              setLog(data.log); saveLog(data.log)
             }
             setSyncState('idle')
           },
@@ -114,21 +111,18 @@ export default function App() {
   }, [])
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const syncToFirestore = useCallback((t: Task[], l: LogEntry[]) => {
+  const syncToFirestore = useCallback((t: Task[]) => {
     if (!user || user === 'loading') return
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(async () => {
       setSyncState('syncing')
-      try { await saveToFirestore(user.uid, t, l); setSyncState('idle') }
+      try { await saveToFirestore(user.uid, t); setSyncState('idle') }
       catch { setSyncState('error') }
     }, 1000)
   }, [user])
 
   function updateTasks(updated: Task[]) {
-    setTasks(updated); saveTasks(updated); syncToFirestore(updated, log)
-  }
-  function updateLog(t: Task[], l: LogEntry[]) {
-    setTasks(t); saveTasks(t); setLog(l); saveLog(l); syncToFirestore(t, l)
+    setTasks(updated); saveTasks(updated); syncToFirestore(updated)
   }
 
   async function login() {
@@ -162,9 +156,7 @@ export default function App() {
   function deleteTask(id: string) { updateTasks(tasks.filter(t => t.id !== id)); setEditingTask(null) }
   function markDone(task: Task) {
     const now = new Date().toISOString()
-    const updatedTasks = tasks.map(t => t.id === task.id ? { ...t, lastDone: now, snoozedUntil: null } : t)
-    const updatedLog = [{ id: crypto.randomUUID(), taskId: task.id, taskName: task.name, doneAt: now }, ...log]
-    updateLog(updatedTasks, updatedLog)
+    updateTasks(tasks.map(t => t.id === task.id ? { ...t, lastDone: now, snoozedUntil: null } : t))
   }
   function snooze(taskId: string, days: number) {
     const until = new Date(); until.setDate(until.getDate() + days)
@@ -188,7 +180,7 @@ export default function App() {
 
   const today = new Date().toISOString().split('T')[0]
   const overdueCount = tasks.filter(t => { const u = urgency(t); return u === 'overdue' || u === 'new' }).length
-  const snoozeTask = snoozeTaskId ? tasks.find(t => t.id === snoozeTaskId) : null
+  const snoozeTask = tasks.find(t => t.id === snoozeTaskId)
 
   const TaskForm = () => (
     <div className="space-y-5 py-2">
@@ -248,9 +240,6 @@ export default function App() {
           <div className="flex items-center gap-1">
             {syncState === 'syncing' && <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin mr-2" />}
             {syncState === 'error' && <span className="font-mono text-xs text-red-500 mr-2">sync error</span>}
-            <Button variant="ghost" size="sm" className="text-muted-foreground text-sm h-8 px-3" onClick={() => setShowLog(true)}>
-              History
-            </Button>
             <Button size="sm" className="text-sm h-8 px-3" onClick={openAdd}>
               <Plus className="w-3.5 h-3.5 mr-1" />
               Add task
@@ -408,30 +397,6 @@ export default function App() {
           </DialogContent>
         </Dialog>
 
-        {/* Log dialog */}
-        <Dialog open={showLog} onOpenChange={setShowLog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>History</DialogTitle>
-            </DialogHeader>
-            <div className="max-h-96 overflow-y-auto -mx-1 px-1">
-              {log.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nothing logged yet — mark a task as done to start.</p>}
-              <div className="divide-y divide-border">
-                {log.map(entry => (
-                  <div key={entry.id} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                      <span className="text-sm">{entry.taskName}</span>
-                    </div>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {new Date(entry.doneAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
 
       </div>
     </div>
