@@ -26,6 +26,12 @@ function urgency(task: Task): 'overdue' | 'soon' | 'ok' | 'new' | 'snoozed' {
   return 'ok'
 }
 
+function humanizeDays(d: number): string {
+  if (d < 7) return `${d} ${d === 1 ? 'day' : 'days'}`
+  if (d < 30) { const w = Math.round(d / 7); return `${w} ${w === 1 ? 'week' : 'weeks'}` }
+  const m = Math.round(d / 30); return `${m} ${m === 1 ? 'month' : 'months'}`
+}
+
 function dueLabel(task: Task): string {
   if (isSnoozed(task)) {
     const until = new Date(task.snoozedUntil!)
@@ -33,12 +39,10 @@ function dueLabel(task: Task): string {
   }
   if (!task.lastDone) return "hasn't been done yet"
   const days = daysUntilDue(task)
-  const d = Math.abs(days)
-  const dayWord = d === 1 ? 'day' : 'days'
-  if (days < 0) return `${d} ${dayWord} overdue`
+  if (days < 0) return `${humanizeDays(Math.abs(days))} overdue`
   if (days === 0) return 'due today'
   if (days === 1) return 'due tomorrow'
-  return `due in ${days} days`
+  return `due in ${humanizeDays(days)}`
 }
 
 function intervalLabel(days: number): string {
