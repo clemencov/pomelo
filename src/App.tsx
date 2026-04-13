@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -6,7 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loadTasks, saveTasks, loadLog, saveLog, daysUntilDue } from './store'
 import type { Task, LogEntry } from './types'
-import { Check, Pencil, Plus, ScrollText, Clock, AlertTriangle, BellOff } from 'lucide-react'
+import { loadAuth, saveAuth, clearAuth, startDeviceFlow, pollForToken, fetchUser } from './auth'
+import type { AuthState } from './auth'
+import { loadGistId, saveGistId, loadFromGist, saveToGist, findPomeloGist } from './gist'
+import { Check, Pencil, Plus, ScrollText, Clock, AlertTriangle, BellOff, LogOut, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function isSnoozed(task: Task): boolean {
@@ -47,11 +50,11 @@ function toDateInput(iso: string | null): string {
 }
 
 const urgencyConfig = {
-  overdue: { bar: 'bg-red-500',    label: 'text-red-600 dark:text-red-400',       icon: AlertTriangle },
-  soon:    { bar: 'bg-amber-400',  label: 'text-amber-600 dark:text-amber-400',   icon: Clock },
-  ok:      { bar: 'bg-emerald-400',label: 'text-emerald-600 dark:text-emerald-400',icon: Check },
-  new:     { bar: 'bg-slate-300',  label: 'text-muted-foreground',                icon: AlertTriangle },
-  snoozed: { bar: 'bg-violet-300', label: 'text-violet-500 dark:text-violet-400', icon: BellOff },
+  overdue: { bar: 'bg-red-500',     label: 'text-red-600 dark:text-red-400',        icon: AlertTriangle },
+  soon:    { bar: 'bg-amber-400',   label: 'text-amber-600 dark:text-amber-400',    icon: Clock },
+  ok:      { bar: 'bg-emerald-400', label: 'text-emerald-600 dark:text-emerald-400',icon: Check },
+  new:     { bar: 'bg-slate-300',   label: 'text-muted-foreground',                 icon: AlertTriangle },
+  snoozed: { bar: 'bg-violet-300',  label: 'text-violet-500 dark:text-violet-400',  icon: BellOff },
 }
 
 const SNOOZE_PRESETS = [
@@ -60,11 +63,24 @@ const SNOOZE_PRESETS = [
   { label: '1 month', days: 30 },
 ]
 
+type SyncState = 'idle' | 'syncing' | 'error'
+
 export default function App() {
+  const [auth, setAuth] = useState<AuthState | null>(loadAuth)
   const [tasks, setTasks] = useState<Task[]>(() =>
     loadTasks().map(t => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
   )
   const [log, setLog] = useState<LogEntry[]>(loadLog)
+  const [gistId, setGistId] = useState<string | null>(loadGistId)
+  const [syncState, setSyncState] = useState<SyncState>('idle')
+
+  // Login flow state
+  const [loginStep, setLoginStep] = useState<'idle' | 'pending' | 'loading'>('idle')
+  const [userCode, setUserCode] = useState('')
+  const [verificationUri, setVerificationUri] = useState('')
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // UI state
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -75,28 +91,115 @@ export default function App() {
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
 
-  function openAdd() {
-    setName(''); setInterval('30'); setLastDone('')
-    setShowAdd(true)
-  }
+  // Load from gist on login
+  useEffect(() => {
+    if (!auth) return
+    async function load() {
+      setSyncState('syncing')
+      try {
+        let id = gistId
+        if (!id) {
+          id = await findPomeloGist(auth!.token)
+          if (id) { setGistId(id); saveGistId(id) }
+        }
+        if (id) {
+          const data = await loadFromGist(auth!.token, id)
+          if (data) {
+            const t = data.tasks.map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
+            setTasks(t); saveTasks(t)
+            setLog(data.log); saveLog(data.log)
+          }
+        }
+        setSyncState('idle')
+      } catch {
+        setSyncState('error')
+      }
+    }
+    load()
+  }, [auth]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function openEdit(task: Task) {
-    setName(task.name)
-    setInterval(String(task.intervalDays))
-    setLastDone(toDateInput(task.lastDone))
-    setConfirmDelete(false)
-    setEditingTask(task)
-  }
+  // Auto-save to gist (debounced 1.5s)
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const syncToGist = useCallback((t: Task[], l: LogEntry[]) => {
+    if (!auth) return
+    if (saveTimeout.current) clearTimeout(saveTimeout.current)
+    saveTimeout.current = setTimeout(async () => {
+      setSyncState('syncing')
+      try {
+        const id = await saveToGist(auth.token, loadGistId(), { tasks: t, log: l })
+        setGistId(id)
+        setSyncState('idle')
+      } catch {
+        setSyncState('error')
+      }
+    }, 1500)
+  }, [auth])
 
   function updateTasks(updated: Task[]) {
     setTasks(updated); saveTasks(updated)
+    syncToGist(updated, log)
+  }
+
+  function updateLog(t: Task[], l: LogEntry[]) {
+    setTasks(t); saveTasks(t)
+    setLog(l); saveLog(l)
+    syncToGist(t, l)
+  }
+
+  // Login: start device flow
+  async function startLogin() {
+    setLoginStep('loading')
+    try {
+      const { deviceCode, userCode, verificationUri, interval } = await startDeviceFlow()
+      setUserCode(userCode)
+      setVerificationUri(verificationUri)
+      setLoginStep('pending')
+
+      // Poll for token
+      let token: string | null = null
+      const poll = async () => {
+        token = await pollForToken(deviceCode, interval)
+        if (token) {
+          const user = await fetchUser(token)
+          const authState = { token, ...user }
+          saveAuth(authState)
+          setAuth(authState)
+          setLoginStep('idle')
+        } else {
+          pollingRef.current = setTimeout(poll, interval * 1000)
+        }
+      }
+      poll()
+    } catch {
+      setLoginStep('idle')
+    }
+  }
+
+  function cancelLogin() {
+    if (pollingRef.current) clearTimeout(pollingRef.current)
+    setLoginStep('idle')
+    setUserCode('')
+  }
+
+  function logout() {
+    clearAuth()
+    setAuth(null)
+    setGistId(null)
+  }
+
+  // Task operations
+  function openAdd() { setName(''); setInterval('30'); setLastDone(''); setShowAdd(true) }
+
+  function openEdit(task: Task) {
+    setName(task.name); setInterval(String(task.intervalDays))
+    setLastDone(toDateInput(task.lastDone)); setConfirmDelete(false)
+    setEditingTask(task)
   }
 
   function addTask() {
     if (!name.trim()) return
     updateTasks([...tasks, {
-      id: crypto.randomUUID(),
-      name: name.trim(),
+      id: crypto.randomUUID(), name: name.trim(),
       intervalDays: parseInt(interval) || 30,
       lastDone: lastDone ? new Date(lastDone).toISOString() : null,
       snoozedUntil: null,
@@ -119,17 +222,16 @@ export default function App() {
 
   function markDone(task: Task) {
     const now = new Date().toISOString()
-    updateTasks(tasks.map(t => t.id === task.id ? { ...t, lastDone: now, snoozedUntil: null } : t))
+    const updatedTasks = tasks.map(t => t.id === task.id ? { ...t, lastDone: now, snoozedUntil: null } : t)
     const updatedLog = [{ id: crypto.randomUUID(), taskId: task.id, taskName: task.name, doneAt: now }, ...log]
-    setLog(updatedLog); saveLog(updatedLog)
+    updateLog(updatedTasks, updatedLog)
   }
 
   function snooze(taskId: string, days: number) {
     const until = new Date()
     until.setDate(until.getDate() + days)
     updateTasks(tasks.map(t => t.id === taskId ? { ...t, snoozedUntil: until.toISOString() } : t))
-    setSnoozeTaskId(null)
-    setCustomSnooze('')
+    setSnoozeTaskId(null); setCustomSnooze('')
   }
 
   function unsnooze(taskId: string) {
@@ -140,7 +242,6 @@ export default function App() {
     const ua = urgency(a), ub = urgency(b)
     if (ua === 'snoozed' && ub !== 'snoozed') return 1
     if (ub === 'snoozed' && ua !== 'snoozed') return -1
-    // never-done tasks (no lastDone) sort after overdue but before future
     if (!a.lastDone && !b.lastDone) return 0
     if (!a.lastDone) return -1
     if (!b.lastDone) return -1
@@ -148,6 +249,7 @@ export default function App() {
     const bDue = new Date(b.lastDone).getTime() + b.intervalDays * 86400000
     return aDue - bDue
   })
+
   const today = new Date().toISOString().split('T')[0]
   const overdueCount = tasks.filter(t => { const u = urgency(t); return u === 'overdue' || u === 'new' }).length
   const snoozeTask = snoozeTaskId ? tasks.find(t => t.id === snoozeTaskId) : null
@@ -169,6 +271,45 @@ export default function App() {
     </div>
   )
 
+  // Login screen
+  if (!auth) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-6 px-6">
+          <h1 className="text-4xl font-semibold tracking-tight">pomelo</h1>
+          <p className="text-muted-foreground text-base">Recurring task manager — synced to your GitHub Gists</p>
+          <Button className="text-base h-12 px-8" onClick={startLogin} disabled={loginStep !== 'idle'}>
+            
+            {loginStep === 'loading' ? 'Starting…' : 'Login with GitHub'}
+          </Button>
+        </div>
+
+        {/* Device flow dialog */}
+        <Dialog open={loginStep === 'pending'} onOpenChange={open => !open && cancelLogin()}>
+          <DialogContent className="sm:max-w-md text-center">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-center">Authorize pomelo</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <p className="text-muted-foreground">Visit the link below and enter this code:</p>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl py-5 px-8">
+                <p className="text-3xl font-mono font-bold tracking-widest text-foreground">{userCode}</p>
+              </div>
+              <Button variant="outline" className="text-base h-11 w-full" onClick={() => window.open(verificationUri, '_blank')}>
+                
+                Open {verificationUri}
+              </Button>
+              <p className="text-sm text-muted-foreground">Waiting for authorization…</p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" className="text-base h-11 w-full" onClick={cancelLogin}>Cancel</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="max-w-2xl mx-auto px-6 py-16">
@@ -182,6 +323,10 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* Sync indicator */}
+            {syncState === 'syncing' && <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />}
+            {syncState === 'error' && <span className="text-xs text-red-500">sync failed</span>}
+
             <Button variant="ghost" className="text-muted-foreground text-base h-11 px-4" onClick={() => setShowLog(true)}>
               <ScrollText className="w-5 h-5 mr-2" />
               Log
@@ -190,6 +335,14 @@ export default function App() {
               <Plus className="w-5 h-5 mr-1.5" />
               Add task
             </Button>
+
+            {/* User avatar + logout */}
+            <div className="flex items-center gap-2 pl-2 border-l border-border">
+              <img src={auth.avatarUrl} alt={auth.username} className="w-8 h-8 rounded-full" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={logout} title="Logout">
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -267,22 +420,12 @@ export default function App() {
                 ))}
               </div>
               <div className="flex gap-2 items-center">
-                <Input
-                  className="text-base h-11"
-                  type="date"
-                  value={customSnooze}
-                  min={today}
-                  onChange={e => setCustomSnooze(e.target.value)}
-                  placeholder="Custom date"
-                />
-                <Button
-                  className="h-11 px-5 text-base shrink-0"
-                  disabled={!customSnooze}
+                <Input className="text-base h-11" type="date" value={customSnooze} min={today} onChange={e => setCustomSnooze(e.target.value)} />
+                <Button className="h-11 px-5 text-base shrink-0" disabled={!customSnooze}
                   onClick={() => {
                     const days = Math.round((new Date(customSnooze).getTime() - Date.now()) / 86400000)
                     if (days > 0) snooze(snoozeTaskId!, days)
-                  }}
-                >
+                  }}>
                   Snooze
                 </Button>
               </div>
@@ -318,9 +461,7 @@ export default function App() {
               <>
                 <TaskForm />
                 <DialogFooter className="flex-row justify-between sm:justify-between">
-                  <Button variant="ghost" className="text-base h-11 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => setConfirmDelete(true)}>
-                    Delete
-                  </Button>
+                  <Button variant="ghost" className="text-base h-11 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => setConfirmDelete(true)}>Delete</Button>
                   <div className="flex gap-2">
                     <Button variant="ghost" className="text-base h-11" onClick={() => setEditingTask(null)}>Cancel</Button>
                     <Button className="text-base h-11 px-6" onClick={saveEdit}>Save</Button>
