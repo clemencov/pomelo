@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loadTasks, saveTasks, daysUntilDue } from './store'
 import type { Task } from './types'
-import { Check, Pencil, Plus, Clock, AlertTriangle, BellOff, LogOut } from 'lucide-react'
+import { Check, Pencil, Plus, BellOff, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster, toast } from 'sonner'
 
@@ -58,11 +58,11 @@ function toDateInput(iso: string | null): string {
 }
 
 const urgencyConfig = {
-  overdue: { dot: 'bg-red-500',    text: 'text-red-600 dark:text-red-400',        icon: AlertTriangle },
-  soon:    { dot: 'bg-amber-400',  text: 'text-amber-600 dark:text-amber-500',    icon: Clock },
-  ok:      { dot: 'bg-emerald-500',text: 'text-emerald-700 dark:text-emerald-500',icon: Check },
-  new:     { dot: 'bg-stone-400',  text: 'text-muted-foreground',                 icon: AlertTriangle },
-  snoozed: { dot: 'bg-stone-300',  text: 'text-muted-foreground',                 icon: BellOff },
+  overdue: { card: 'bg-red-500/[0.07] border-red-500/[0.18]',   text: 'text-red-600 dark:text-red-400' },
+  soon:    { card: 'bg-amber-400/[0.07] border-amber-500/[0.2]', text: 'text-amber-600 dark:text-amber-400' },
+  ok:      { card: 'bg-card border-border',                       text: 'text-emerald-700 dark:text-emerald-400' },
+  new:     { card: 'bg-card border-border',                       text: 'text-muted-foreground' },
+  snoozed: { card: 'bg-card border-border',                       text: 'text-muted-foreground' },
 }
 
 const SNOOZE_PRESETS = [
@@ -242,7 +242,7 @@ export default function App() {
   const overdueCount = tasks.filter(t => { const u = urgency(t); return u === 'overdue' || u === 'new' }).length
   const snoozeTask = tasks.find(t => t.id === snoozeTaskId)
 
-
+  // ── Loading ──────────────────────────────────────────────────────────────
   if (user === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -251,20 +251,30 @@ export default function App() {
     )
   }
 
+  // ── Login ────────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col justify-end">
+      <div className="min-h-screen bg-background flex flex-col">
         <Toaster position="bottom-center" richColors />
-        <div className="px-8 pb-20 max-w-lg space-y-10">
-          <div className="space-y-4">
-            {/* Display — tight tracking at large size is optically correct */}
-            <h1 className="text-[5rem] font-bold tracking-[-0.04em] leading-none">pomelo</h1>
-            {/* Subhead — lighter weight, generous line-height for readability */}
-            <p className="text-[1.2rem] font-normal text-muted-foreground leading-[1.55]">
-              A friendly reminder for things<br />you do on a regular schedule.
+        <div className="flex-1" />
+        <div className="px-8 pb-20 sm:pb-28 max-w-lg">
+          <div className="mb-12">
+            {/* Display wordmark — scales with viewport, tight tracking at large size */}
+            <h1
+              className="font-bold tracking-[-0.05em] leading-[0.88]"
+              style={{ fontSize: 'clamp(4.5rem, 20vw, 7.5rem)' }}
+            >
+              pomelo
+            </h1>
+            <p className="mt-6 text-[1.125rem] text-muted-foreground leading-[1.65]">
+              A quiet reminder for everything
+              <br />you do on a regular schedule.
             </p>
           </div>
-          <Button className="w-full h-[3.5rem] text-[1.0625rem] font-semibold tracking-[-0.01em]" onClick={login}>
+          <Button
+            className="w-full h-14 text-[1.0625rem] font-semibold tracking-[-0.01em]"
+            onClick={login}
+          >
             Continue with Google
           </Button>
         </div>
@@ -272,100 +282,112 @@ export default function App() {
     )
   }
 
+  // ── App ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-32">
       <Toaster position="bottom-center" richColors />
-      <div className="max-w-2xl mx-auto px-5 sm:px-8">
+      <div className="max-w-lg mx-auto px-5 sm:px-8">
 
         {/* Header */}
-        <header className="flex items-center justify-between py-6 border-b border-border">
-          <div className="flex items-center gap-3.5">
-            {/* Wordmark — bold + very tight tracking is standard for logotype */}
-            <h1 className="text-[1.375rem] font-bold tracking-[-0.04em] leading-none">pomelo</h1>
-            {overdueCount > 0 && (
-              <span className="text-[0.7rem] font-semibold tracking-wide uppercase text-red-500 bg-red-500/10 px-2.5 py-1 rounded-full">
+        <header className="flex items-center justify-between pt-8 pb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-[1.5rem] font-bold tracking-[-0.04em] leading-none">pomelo</h1>
+            {syncState === 'syncing' && (
+              <div className="w-2 h-2 rounded-full bg-foreground/25 animate-pulse" />
+            )}
+            {overdueCount > 0 && syncState === 'idle' && (
+              <span className="text-[0.7rem] font-bold tracking-[0.06em] uppercase text-red-500 select-none">
                 {overdueCount} overdue
               </span>
             )}
-            {syncState === 'syncing' && (
-              <div className="w-3.5 h-3.5 rounded-full border-2 border-foreground/15 border-t-foreground/50 animate-spin" />
-            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button className="h-10 px-4 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={openAdd}>
-              <Plus className="w-4 h-4 mr-1.5" />
-              Add task
+          <div className="flex items-center gap-1.5">
+            {user.photoURL && (
+              <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full opacity-80" />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+              onClick={logout}
+            >
+              <LogOut className="w-4 h-4" />
             </Button>
-            <div className="flex items-center gap-1 pl-3 border-l border-border">
-              <img src={user.photoURL ?? ''} alt="" className="w-8 h-8 rounded-full opacity-75" />
-              <Button variant="ghost" size="sm" className="h-10 w-10 p-0 text-muted-foreground hover:text-foreground" onClick={logout}>
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
         </header>
 
         {/* Empty state */}
         {sorted.length === 0 && (
-          <div className="flex flex-col items-center py-32 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-5">
-              <Check className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <p className="text-[1.125rem] font-semibold tracking-[-0.02em]">Nothing here yet</p>
-            <p className="text-[0.9375rem] text-muted-foreground mt-2 leading-[1.6]">
-              Add something you do regularly —<br />like changing a filter or taking a vitamin.
+          <div className="pt-12 pb-8">
+            <p className="text-[1.75rem] font-bold tracking-[-0.03em] leading-[1.2] text-balance">
+              Nothing scheduled yet
+            </p>
+            <p className="mt-3 text-[1rem] text-muted-foreground leading-[1.6]">
+              Tap the + button to add your first recurring task.
             </p>
           </div>
         )}
 
         {/* Task list */}
-        <div className="space-y-3 py-5">
+        <div className="space-y-3">
           {sorted.map(task => {
             const u = urgency(task)
             const cfg = urgencyConfig[u]
             const snoozed = u === 'snoozed'
 
             return (
-              <div key={task.id} className={cn(
-                'flex items-center rounded-xl border border-border bg-card overflow-hidden group transition-opacity',
-                snoozed && 'opacity-50'
-              )}>
-                {/* Left accent bar */}
-                <div className={cn('w-1.5 self-stretch shrink-0', cfg.dot)} />
-
-                <div className="flex items-center gap-4 flex-1 min-w-0 px-5 py-5">
-                  {/* Name + status */}
+              <div
+                key={task.id}
+                className={cn(
+                  'rounded-2xl border overflow-hidden transition-opacity',
+                  cfg.card,
+                  snoozed && 'opacity-50'
+                )}
+              >
+                <div className="flex items-center px-5 py-5 gap-3">
+                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    {/* Primary — semibold + slight negative tracking reads crisply at this size */}
-                    <p className="text-[1.0625rem] font-semibold leading-snug tracking-[-0.015em] truncate">{task.name}</p>
-                    {/* Status — colored, medium weight, clear but subordinate */}
-                    <p className={cn('text-[0.8125rem] font-medium leading-none mt-1.5', cfg.text)}>{dueLabel(task)}</p>
-                    {/* Interval — tertiary, lightest visual weight */}
-                    <p className="text-[0.8125rem] font-normal text-muted-foreground leading-none mt-1">{intervalLabel(task.intervalDays)}</p>
+                    <p className="text-[1.1875rem] font-semibold tracking-[-0.02em] leading-snug truncate">
+                      {task.name}
+                    </p>
+                    <p className="mt-1.5 text-[0.875rem] leading-none">
+                      <span className={cn('font-medium', cfg.text)}>{dueLabel(task)}</span>
+                      <span className="text-muted-foreground"> · {intervalLabel(task.intervalDays)}</span>
+                    </p>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <button
-                      className="h-11 w-11 flex items-center justify-center rounded-xl text-muted-foreground hover:text-emerald-600 hover:bg-secondary transition-colors"
-                      onClick={() => markDone(task)} title="Mark as done"
+                      className="h-11 w-11 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors"
+                      onClick={() => markDone(task)}
+                      title="Mark done"
                     >
                       <Check className="w-5 h-5" />
                     </button>
                     {snoozed ? (
-                      <button className="h-11 w-11 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                        onClick={() => unsnooze(task.id)} title="Wake up">
-                        <BellOff className="w-5 h-5" />
+                      <button
+                        className="h-11 w-11 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-secondary active:bg-secondary transition-colors"
+                        onClick={() => unsnooze(task.id)}
+                        title="Wake up"
+                      >
+                        <BellOff className="w-[1.1rem] h-[1.1rem]" />
                       </button>
                     ) : (
-                      <button className="h-11 w-11 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                        onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }} title="Snooze">
-                        <BellOff className="w-5 h-5" />
+                      <button
+                        className="h-11 w-11 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-secondary active:bg-secondary transition-colors"
+                        onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }}
+                        title="Snooze"
+                      >
+                        <BellOff className="w-[1.1rem] h-[1.1rem]" />
                       </button>
                     )}
-                    <button className="h-11 w-11 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      onClick={() => openEdit(task)} title="Edit">
-                      <Pencil className="w-4.5 h-4.5" />
+                    <button
+                      className="h-11 w-11 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-secondary active:bg-secondary transition-colors"
+                      onClick={() => openEdit(task)}
+                      title="Edit"
+                    >
+                      <Pencil className="w-[1rem] h-[1rem]" />
                     </button>
                   </div>
                 </div>
@@ -373,83 +395,105 @@ export default function App() {
             )
           })}
         </div>
+      </div>
 
-        {/* Snooze dialog */}
-        <Dialog open={!!snoozeTaskId} onOpenChange={open => !open && setSnoozeTaskId(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em] leading-tight">Snooze "{snoozeTask?.name}"</DialogTitle>
-              <p className="text-[0.9375rem] text-muted-foreground leading-snug">Come back to it after:</p>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
-              <div className="flex gap-2">
-                {SNOOZE_PRESETS.map(p => (
-                  <button key={p.days}
-                    className="flex-1 h-12 text-[0.9375rem] font-medium tracking-[-0.01em] border border-border rounded-xl hover:bg-secondary transition-colors"
-                    onClick={() => snooze(snoozeTaskId!, p.days)}>
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input className="h-12 text-base bg-secondary border-0 focus-visible:ring-1" type="date" value={customSnooze} min={today} onChange={e => setCustomSnooze(e.target.value)} />
-                <Button className="h-12 px-5 text-base shrink-0" disabled={!customSnooze}
-                  onClick={() => {
-                    const days = Math.round((new Date(customSnooze).getTime() - Date.now()) / 86400000)
-                    if (days > 0) snooze(snoozeTaskId!, days)
-                  }}>
-                  Snooze
-                </Button>
+      {/* FAB — floating add button, always thumb-reachable */}
+      <button
+        className="fixed bottom-8 right-6 h-14 w-14 rounded-full bg-foreground text-background shadow-lg shadow-foreground/10 flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+        onClick={openAdd}
+        title="Add task"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      {/* Snooze dialog */}
+      <Dialog open={!!snoozeTaskId} onOpenChange={open => !open && setSnoozeTaskId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em] leading-tight">
+              Snooze "{snoozeTask?.name}"
+            </DialogTitle>
+            <p className="text-[0.9375rem] text-muted-foreground leading-snug">Come back to it after:</p>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex gap-2">
+              {SNOOZE_PRESETS.map(p => (
+                <button
+                  key={p.days}
+                  className="flex-1 h-12 text-[0.9375rem] font-medium tracking-[-0.01em] border border-border rounded-xl hover:bg-secondary active:bg-secondary transition-colors"
+                  onClick={() => snooze(snoozeTaskId!, p.days)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                className="h-12 text-base bg-secondary border-0 focus-visible:ring-1"
+                type="date"
+                value={customSnooze}
+                min={today}
+                onChange={e => setCustomSnooze(e.target.value)}
+              />
+              <Button
+                className="h-12 px-5 text-base shrink-0"
+                disabled={!customSnooze}
+                onClick={() => {
+                  const days = Math.round((new Date(customSnooze).getTime() - Date.now()) / 86400000)
+                  if (days > 0) snooze(snoozeTaskId!, days)
+                }}
+              >
+                Snooze
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add dialog */}
+      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em]">New task</DialogTitle>
+          </DialogHeader>
+          <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
+          <DialogFooter>
+            <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button className="h-12 px-6 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={addTask}>Add task</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em]">Edit task</DialogTitle>
+          </DialogHeader>
+          {confirmDelete ? (
+            <div className="py-3 space-y-5">
+              <p className="text-[0.9375rem] text-muted-foreground leading-relaxed">
+                Delete <span className="font-semibold text-foreground">{editingTask?.name}</span>? This can't be undone.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setConfirmDelete(false)}>Keep it</Button>
+                <Button variant="destructive" className="h-12 text-[0.9375rem] font-semibold" onClick={() => editingTask && deleteTask(editingTask.id)}>Yes, delete it</Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Add dialog */}
-        <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em]">Add a task</DialogTitle>
-            </DialogHeader>
-            <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
-            <DialogFooter>
-              <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button className="h-12 px-6 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={addTask}>Add task</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit dialog */}
-        <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="text-[1.25rem] font-semibold tracking-[-0.02em]">Edit task</DialogTitle>
-            </DialogHeader>
-            {confirmDelete ? (
-              <div className="py-3 space-y-5">
-                <p className="text-[0.9375rem] text-muted-foreground leading-relaxed">Delete <span className="font-semibold text-foreground">{editingTask?.name}</span>? This can't be undone.</p>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-                  <Button variant="destructive" className="h-12 text-[0.9375rem] font-semibold" onClick={() => editingTask && deleteTask(editingTask.id)}>Yes, delete it</Button>
+          ) : (
+            <>
+              <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
+              <DialogFooter className="flex-row justify-between sm:justify-between">
+                <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>Delete</Button>
+                <div className="flex gap-2">
+                  <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setEditingTask(null)}>Cancel</Button>
+                  <Button className="h-12 px-6 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={saveEdit}>Save changes</Button>
                 </div>
-              </div>
-            ) : (
-              <>
-                <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
-                <DialogFooter className="flex-row justify-between sm:justify-between">
-                  <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>Delete</Button>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" className="h-12 text-[0.9375rem] font-medium" onClick={() => setEditingTask(null)}>Cancel</Button>
-                    <Button className="h-12 px-6 text-[0.9375rem] font-semibold tracking-[-0.01em]" onClick={saveEdit}>Save changes</Button>
-                  </div>
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-
-
-      </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
