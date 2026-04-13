@@ -1,4 +1,7 @@
-@import "@fontsource-variable/inter/wght.css";
+/* UI text — Plus Jakarta Sans Variable (more character than Inter) */
+@import "@fontsource-variable/plus-jakarta-sans/wght.css";
+/* Display / wordmark — Fraunces Variable (warm optical serif, italic) */
+@import "@fontsource-variable/fraunces/wght-italic.css";
 @import "tailwindcss";
 
 @theme inline {
@@ -25,57 +28,60 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* UI font */
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Display / wordmark font */
+  --font-display: "Fraunces Variable", Georgia, serif;
 }
 
 @layer base {
   :root {
-    /* Off-white base — barely warm, clean */
-    --background: 50 14% 97%;
-    --foreground: 18 10% 9%;
+    /* Clean warm white */
+    --background: 40 18% 97%;
+    --foreground: 220 14% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 18 10% 9%;
+    --card-foreground: 220 14% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 18 10% 9%;
-    /* Brand — pomelo citrus green */
-    --brand: 92 38% 34%;
-    --primary: 92 38% 34%;
+    --popover-foreground: 220 14% 10%;
+    /* Brand — terracotta, warm citrus clay */
+    --brand: 16 70% 50%;
+    --primary: 16 70% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 48 8% 93%;
-    --secondary-foreground: 18 10% 9%;
-    --muted: 48 8% 93%;
-    --muted-foreground: 20 5% 44%;
-    --accent: 48 8% 93%;
-    --accent-foreground: 18 10% 9%;
-    --destructive: 4 70% 46%;
+    --secondary: 40 10% 93%;
+    --secondary-foreground: 220 14% 10%;
+    --muted: 40 10% 93%;
+    --muted-foreground: 220 8% 46%;
+    --accent: 40 10% 93%;
+    --accent-foreground: 220 14% 10%;
+    --destructive: 4 72% 46%;
     --destructive-foreground: 0 0% 100%;
-    --border: 40 8% 90%;
-    --input: 40 8% 90%;
-    --ring: 92 38% 34%;
-    --radius: 0.75rem;
+    --border: 36 10% 88%;
+    --input: 36 10% 88%;
+    --ring: 16 70% 50%;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 224 13% 8%;
-    --foreground: 50 10% 93%;
-    --card: 224 11% 11%;
-    --card-foreground: 50 10% 93%;
-    --popover: 224 11% 11%;
-    --popover-foreground: 50 10% 93%;
-    --brand: 90 44% 58%;
-    --primary: 90 44% 58%;
-    --primary-foreground: 224 13% 8%;
-    --secondary: 224 8% 15%;
-    --secondary-foreground: 50 10% 93%;
-    --muted: 224 8% 15%;
-    --muted-foreground: 222 6% 50%;
-    --accent: 224 8% 15%;
-    --accent-foreground: 50 10% 93%;
+    --background: 220 14% 7%;
+    --foreground: 40 12% 93%;
+    --card: 220 12% 10%;
+    --card-foreground: 40 12% 93%;
+    --popover: 220 12% 10%;
+    --popover-foreground: 40 12% 93%;
+    --brand: 18 72% 62%;
+    --primary: 18 72% 62%;
+    --primary-foreground: 220 14% 7%;
+    --secondary: 220 8% 14%;
+    --secondary-foreground: 40 12% 93%;
+    --muted: 220 8% 14%;
+    --muted-foreground: 220 6% 50%;
+    --accent: 220 8% 14%;
+    --accent-foreground: 40 12% 93%;
     --destructive: 4 62% 42%;
-    --destructive-foreground: 50 10% 93%;
-    --border: 222 8% 17%;
-    --input: 222 8% 17%;
-    --ring: 90 44% 58%;
+    --destructive-foreground: 40 12% 93%;
+    --border: 220 8% 17%;
+    --input: 220 8% 17%;
+    --ring: 18 72% 62%;
   }
 }
 
@@ -85,8 +91,6 @@
     font-family: var(--font-sans);
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    /* Inter: open a/g, disambiguated l/I/1, tabular nums, contextual alternates */
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "ss02";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
