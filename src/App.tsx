@@ -66,6 +66,30 @@ const SNOOZE_PRESETS = [
 
 type SyncState = 'idle' | 'syncing'
 
+function TaskForm({ name, setName, interval, setInterval, lastDone, setLastDone, today }: {
+  name: string; setName: (v: string) => void
+  interval: string; setInterval: (v: string) => void
+  lastDone: string; setLastDone: (v: string) => void
+  today: string
+}) {
+  return (
+    <div className="space-y-5 py-2">
+      <div className="space-y-1.5">
+        <Label className="text-sm text-muted-foreground">What needs doing?</Label>
+        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-muted-foreground">Repeat every (days)</Label>
+        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-muted-foreground">Last done <span className="text-muted-foreground/60">(optional)</span></Label>
+        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
+      </div>
+    </div>
+  )
+}
+
 async function saveToFirestore(uid: string, tasks: Task[]) {
   await setDoc(doc(db, 'users', uid), { tasks }, { merge: true })
 }
@@ -211,22 +235,6 @@ export default function App() {
   const overdueCount = tasks.filter(t => { const u = urgency(t); return u === 'overdue' || u === 'new' }).length
   const snoozeTask = tasks.find(t => t.id === snoozeTaskId)
 
-  const TaskForm = () => (
-    <div className="space-y-5 py-2">
-      <div className="space-y-1.5">
-        <Label className="text-sm text-muted-foreground">What needs doing?</Label>
-        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-sm text-muted-foreground">Repeat every (days)</Label>
-        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-sm text-muted-foreground">Last done <span className="text-muted-foreground/60">(optional)</span></Label>
-        <Input className="h-11 bg-secondary border-0 focus-visible:ring-1 font-mono" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
-      </div>
-    </div>
-  )
 
   if (user === 'loading') {
     return (
@@ -389,7 +397,7 @@ export default function App() {
             <DialogHeader>
               <DialogTitle>Add a task</DialogTitle>
             </DialogHeader>
-            <TaskForm />
+            <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
             <DialogFooter>
               <Button variant="ghost" className="h-10" onClick={() => setShowAdd(false)}>Cancel</Button>
               <Button className="h-10 px-5" onClick={addTask}>Add task</Button>
@@ -413,7 +421,7 @@ export default function App() {
               </div>
             ) : (
               <>
-                <TaskForm />
+                <TaskForm name={name} setName={setName} interval={interval} setInterval={setInterval} lastDone={lastDone} setLastDone={setLastDone} today={today} />
                 <DialogFooter className="flex-row justify-between sm:justify-between">
                   <Button variant="ghost" className="h-10 text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>Delete</Button>
                   <div className="flex gap-2">
