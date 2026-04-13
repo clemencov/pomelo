@@ -140,7 +140,13 @@ export default function App() {
     const ua = urgency(a), ub = urgency(b)
     if (ua === 'snoozed' && ub !== 'snoozed') return 1
     if (ub === 'snoozed' && ua !== 'snoozed') return -1
-    return daysUntilDue(a) - daysUntilDue(b)
+    // never-done tasks (no lastDone) sort after overdue but before future
+    if (!a.lastDone && !b.lastDone) return 0
+    if (!a.lastDone) return -1
+    if (!b.lastDone) return -1
+    const aDue = new Date(a.lastDone).getTime() + a.intervalDays * 86400000
+    const bDue = new Date(b.lastDone).getTime() + b.intervalDays * 86400000
+    return aDue - bDue
   })
   const today = new Date().toISOString().split('T')[0]
   const overdueCount = tasks.filter(t => { const u = urgency(t); return u === 'overdue' || u === 'new' }).length
