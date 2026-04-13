@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { initializeAuth, GoogleAuthProvider, browserLocalPersistence, browserPopupRedirectResolver } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { initializeFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -13,13 +13,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-// initializeAuth lets us set persistence + redirect resolver explicitly.
-// getAuth() sets these automatically, but doesn't let us override them.
-// Without popupRedirectResolver, signInWithRedirect silently does nothing.
-export const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-  popupRedirectResolver: browserPopupRedirectResolver,
-})
+export const auth = getAuth(app)
 
 // Long-polling is more reliable than WebSockets on iOS Safari
 export const db = initializeFirestore(app, {
