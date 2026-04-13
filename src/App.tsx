@@ -51,6 +51,7 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [name, setName] = useState('')
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
@@ -64,6 +65,7 @@ export default function App() {
     setName(task.name)
     setInterval(String(task.intervalDays))
     setLastDone(toDateInput(task.lastDone))
+    setConfirmDelete(false)
     setEditingTask(task)
   }
 
@@ -211,19 +213,31 @@ export default function App() {
         </Dialog>
 
         {/* Edit dialog */}
-        <Dialog open={!!editingTask} onOpenChange={open => !open && setEditingTask(null)}>
+        <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
           <DialogContent>
             <DialogHeader><DialogTitle>Edit task</DialogTitle></DialogHeader>
-            <TaskForm />
-            <DialogFooter className="flex-row justify-between sm:justify-between">
-              <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => editingTask && deleteTask(editingTask.id)}>
-                Delete
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setEditingTask(null)}>Cancel</Button>
-                <Button onClick={saveEdit}>Save</Button>
+            {confirmDelete ? (
+              <div className="py-2 space-y-4">
+                <p className="text-sm text-muted-foreground">Permanently delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This cannot be undone.</p>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                  <Button variant="destructive" onClick={() => editingTask && deleteTask(editingTask.id)}>Delete permanently</Button>
+                </div>
               </div>
-            </DialogFooter>
+            ) : (
+              <>
+                <TaskForm />
+                <DialogFooter className="flex-row justify-between sm:justify-between">
+                  <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => setConfirmDelete(true)}>
+                    Delete
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => setEditingTask(null)}>Cancel</Button>
+                    <Button onClick={saveEdit}>Save</Button>
+                  </div>
+                </DialogFooter>
+              </>
+            )}
           </DialogContent>
         </Dialog>
 
