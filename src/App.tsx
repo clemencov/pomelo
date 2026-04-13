@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
+import type { User } from 'firebase/auth'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { auth, db, googleProvider } from './firebase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -6,9 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loadTasks, saveTasks, loadLog, saveLog, daysUntilDue } from './store'
 import type { Task, LogEntry } from './types'
-import { loadAuth, saveAuth, clearAuth, startDeviceFlow, pollForToken, fetchUser } from './auth'
-import type { AuthState } from './auth'
-import { loadGistId, saveGistId, loadFromGist, saveToGist, findPomeloGist } from './gist'
 import { Check, Pencil, Plus, ScrollText, Clock, AlertTriangle, BellOff, LogOut, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -50,11 +51,11 @@ function toDateInput(iso: string | null): string {
 }
 
 const urgencyConfig = {
-  overdue: { bar: 'bg-red-500',     label: 'text-red-600 dark:text-red-400',        icon: AlertTriangle },
-  soon:    { bar: 'bg-amber-400',   label: 'text-amber-600 dark:text-amber-400',    icon: Clock },
-  ok:      { bar: 'bg-emerald-400', label: 'text-emerald-600 dark:text-emerald-400',icon: Check },
-  new:     { bar: 'bg-slate-300',   label: 'text-muted-foreground',                 icon: AlertTriangle },
-  snoozed: { bar: 'bg-violet-300',  label: 'text-violet-500 dark:text-violet-400',  icon: BellOff },
+  overdue: { bar: 'bg-red-500',     label: 'text-red-600 dark:text-red-400',         icon: AlertTriangle },
+  soon:    { bar: 'bg-amber-400',   label: 'text-amber-600 dark:text-amber-400',     icon: Clock },
+  ok:      { bar: 'bg-emerald-400', label: 'text-emerald-600 dark:text-emerald-400', icon: Check },
+  new:     { bar: 'bg-slate-300',   label: 'text-muted-foreground',                  icon: AlertTriangle },
+  snoozed: { bar: 'bg-violet-300',  label: 'text-violet-500 dark:text-violet-400',   icon: BellOff },
 }
 
 const SNOOZE_PRESETS = [
@@ -65,20 +66,23 @@ const SNOOZE_PRESETS = [
 
 type SyncState = 'idle' | 'syncing' | 'error'
 
+async function loadFromFirestore(uid: string) {
+  const snap = await getDoc(doc(db, 'users', uid))
+  if (!snap.exists()) return null
+  return snap.data() as { tasks: Task[]; log: LogEntry[] }
+}
+
+async function saveToFirestore(uid: string, tasks: Task[], log: LogEntry[]) {
+  await setDoc(doc(db, 'users', uid), { tasks, log })
+}
+
 export default function App() {
-  const [auth, setAuth] = useState<AuthState | null>(loadAuth)
+  const [user, setUser] = useState<User | null | 'loading'>('loading')
   const [tasks, setTasks] = useState<Task[]>(() =>
     loadTasks().map(t => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
   )
   const [log, setLog] = useState<LogEntry[]>(loadLog)
-  const [gistId, setGistId] = useState<string | null>(loadGistId)
   const [syncState, setSyncState] = useState<SyncState>('idle')
-
-  // Login flow state
-  const [loginStep, setLoginStep] = useState<'idle' | 'pending' | 'loading'>('idle')
-  const [userCode, setUserCode] = useState('')
-  const [verificationUri, setVerificationUri] = useState('')
-  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // UI state
   const [showAdd, setShowAdd] = useState(false)
@@ -91,100 +95,62 @@ export default function App() {
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
 
-  // Load from gist on login
+  // Auth listener
   useEffect(() => {
-    if (!auth) return
-    async function load() {
-      setSyncState('syncing')
-      try {
-        let id = gistId
-        if (!id) {
-          id = await findPomeloGist(auth!.token)
-          if (id) { setGistId(id); saveGistId(id) }
-        }
-        if (id) {
-          const data = await loadFromGist(auth!.token, id)
+    return onAuthStateChanged(auth, async (u) => {
+      setUser(u)
+      if (u) {
+        setSyncState('syncing')
+        try {
+          const data = await loadFromFirestore(u.uid)
           if (data) {
             const t = data.tasks.map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
             setTasks(t); saveTasks(t)
             setLog(data.log); saveLog(data.log)
           }
+          setSyncState('idle')
+        } catch {
+          setSyncState('error')
         }
-        setSyncState('idle')
-      } catch {
-        setSyncState('error')
       }
-    }
-    load()
-  }, [auth]) // eslint-disable-line react-hooks/exhaustive-deps
+    })
+  }, [])
 
-  // Auto-save to gist (debounced 1.5s)
+  // Debounced save to Firestore
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const syncToGist = useCallback((t: Task[], l: LogEntry[]) => {
-    if (!auth) return
+  const syncToFirestore = useCallback((t: Task[], l: LogEntry[]) => {
+    if (!user || user === 'loading') return
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(async () => {
       setSyncState('syncing')
       try {
-        const id = await saveToGist(auth.token, loadGistId(), { tasks: t, log: l })
-        setGistId(id)
+        await saveToFirestore(user.uid, t, l)
         setSyncState('idle')
       } catch {
         setSyncState('error')
       }
-    }, 1500)
-  }, [auth])
+    }, 1000)
+  }, [user])
 
   function updateTasks(updated: Task[]) {
     setTasks(updated); saveTasks(updated)
-    syncToGist(updated, log)
+    syncToFirestore(updated, log)
   }
 
   function updateLog(t: Task[], l: LogEntry[]) {
     setTasks(t); saveTasks(t)
     setLog(l); saveLog(l)
-    syncToGist(t, l)
+    syncToFirestore(t, l)
   }
 
-  // Login: start device flow
-  async function startLogin() {
-    setLoginStep('loading')
-    try {
-      const { deviceCode, userCode, verificationUri, interval } = await startDeviceFlow()
-      setUserCode(userCode)
-      setVerificationUri(verificationUri)
-      setLoginStep('pending')
-
-      // Poll for token
-      let token: string | null = null
-      const poll = async () => {
-        token = await pollForToken(deviceCode, interval)
-        if (token) {
-          const user = await fetchUser(token)
-          const authState = { token, ...user }
-          saveAuth(authState)
-          setAuth(authState)
-          setLoginStep('idle')
-        } else {
-          pollingRef.current = setTimeout(poll, interval * 1000)
-        }
-      }
-      poll()
-    } catch {
-      setLoginStep('idle')
-    }
+  async function login() {
+    try { await signInWithPopup(auth, googleProvider) }
+    catch (e) { console.error(e) }
   }
 
-  function cancelLogin() {
-    if (pollingRef.current) clearTimeout(pollingRef.current)
-    setLoginStep('idle')
-    setUserCode('')
-  }
-
-  function logout() {
-    clearAuth()
-    setAuth(null)
-    setGistId(null)
+  async function logout() {
+    await signOut(auth)
+    setUser(null)
   }
 
   // Task operations
@@ -271,41 +237,26 @@ export default function App() {
     </div>
   )
 
+  // Loading
+  if (user === 'loading') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin" />
+      </div>
+    )
+  }
+
   // Login screen
-  if (!auth) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center space-y-6 px-6">
           <h1 className="text-4xl font-semibold tracking-tight">pomelo</h1>
-          <p className="text-muted-foreground text-base">Recurring task manager — synced to your GitHub Gists</p>
-          <Button className="text-base h-12 px-8" onClick={startLogin} disabled={loginStep !== 'idle'}>
-            
-            {loginStep === 'loading' ? 'Starting…' : 'Login with GitHub'}
+          <p className="text-muted-foreground text-base">Recurring task manager — synced to your account</p>
+          <Button className="text-base h-12 px-8" onClick={login}>
+            Sign in with Google
           </Button>
         </div>
-
-        {/* Device flow dialog */}
-        <Dialog open={loginStep === 'pending'} onOpenChange={open => !open && cancelLogin()}>
-          <DialogContent className="sm:max-w-md text-center">
-            <DialogHeader>
-              <DialogTitle className="text-xl text-center">Authorize pomelo</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
-              <p className="text-muted-foreground">Visit the link below and enter this code:</p>
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl py-5 px-8">
-                <p className="text-3xl font-mono font-bold tracking-widest text-foreground">{userCode}</p>
-              </div>
-              <Button variant="outline" className="text-base h-11 w-full" onClick={() => window.open(verificationUri, '_blank')}>
-                
-                Open {verificationUri}
-              </Button>
-              <p className="text-sm text-muted-foreground">Waiting for authorization…</p>
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" className="text-base h-11 w-full" onClick={cancelLogin}>Cancel</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     )
   }
@@ -323,10 +274,8 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            {/* Sync indicator */}
             {syncState === 'syncing' && <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />}
             {syncState === 'error' && <span className="text-xs text-red-500">sync failed</span>}
-
             <Button variant="ghost" className="text-muted-foreground text-base h-11 px-4" onClick={() => setShowLog(true)}>
               <ScrollText className="w-5 h-5 mr-2" />
               Log
@@ -335,11 +284,9 @@ export default function App() {
               <Plus className="w-5 h-5 mr-1.5" />
               Add task
             </Button>
-
-            {/* User avatar + logout */}
             <div className="flex items-center gap-2 pl-2 border-l border-border">
-              <img src={auth.avatarUrl} alt={auth.username} className="w-8 h-8 rounded-full" />
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={logout} title="Logout">
+              <img src={user.photoURL ?? ''} alt={user.displayName ?? ''} className="w-8 h-8 rounded-full" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={logout} title="Sign out">
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
