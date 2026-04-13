@@ -106,44 +106,44 @@ export default function App() {
   const overdueCount = tasks.filter(t => urgency(t) === 'overdue' || urgency(t) === 'new').length
 
   const TaskForm = () => (
-    <div className="space-y-4 py-2">
-      <div className="space-y-1.5">
-        <Label>Name</Label>
-        <Input placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
+    <div className="space-y-6 py-2">
+      <div className="space-y-2">
+        <Label className="text-base">Name</Label>
+        <Input className="text-base h-12" placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} autoFocus />
       </div>
-      <div className="space-y-1.5">
-        <Label>Repeat every (days)</Label>
-        <Input type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
+      <div className="space-y-2">
+        <Label className="text-base">Repeat every (days)</Label>
+        <Input className="text-base h-12" type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
       </div>
-      <div className="space-y-1.5">
-        <Label>Last done <span className="text-muted-foreground font-normal">(optional)</span></Label>
-        <Input type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
+      <div className="space-y-2">
+        <Label className="text-base">Last done <span className="text-muted-foreground font-normal">(optional)</span></Label>
+        <Input className="text-base h-12" type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
       </div>
     </div>
   )
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="max-w-xl mx-auto px-4 py-10">
+      <div className="max-w-2xl mx-auto px-6 py-16">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-slate-400" />
+            <h1 className="text-4xl font-semibold tracking-tight flex items-center gap-3">
+              <RefreshCw className="w-8 h-8 text-slate-400" />
               pomelo
             </h1>
             {overdueCount > 0 && (
-              <p className="text-sm text-red-500 mt-0.5">{overdueCount} task{overdueCount > 1 ? 's' : ''} need attention</p>
+              <p className="text-base text-red-500 mt-1">{overdueCount} task{overdueCount > 1 ? 's' : ''} need attention</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setShowLog(true)}>
-              <ScrollText className="w-4 h-4 mr-1.5" />
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" className="text-muted-foreground text-base h-11 px-4" onClick={() => setShowLog(true)}>
+              <ScrollText className="w-5 h-5 mr-2" />
               Log
             </Button>
-            <Button size="sm" onClick={openAdd}>
-              <Plus className="w-4 h-4 mr-1" />
+            <Button className="text-base h-11 px-5" onClick={openAdd}>
+              <Plus className="w-5 h-5 mr-1.5" />
               Add task
             </Button>
           </div>
@@ -151,47 +151,45 @@ export default function App() {
 
         {/* Empty state */}
         {sorted.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
-            <RefreshCw className="w-10 h-10 mx-auto mb-3 opacity-20" />
-            <p className="font-medium">No recurring tasks</p>
-            <p className="text-sm mt-1">Add something you do regularly</p>
+          <div className="text-center py-32 text-muted-foreground">
+            <RefreshCw className="w-16 h-16 mx-auto mb-4 opacity-20" />
+            <p className="text-lg font-medium">No recurring tasks</p>
+            <p className="text-base mt-1">Add something you do regularly</p>
           </div>
         )}
 
         {/* Task list */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           {sorted.map(task => {
             const u = urgency(task)
             const cfg = urgencyConfig[u]
             const Icon = cfg.icon
             return (
               <Card key={task.id} className="overflow-hidden border-0 shadow-sm">
-                <div className={cn('h-1 w-full', cfg.bar)} />
-                <CardContent className="flex items-center gap-4 py-4 px-5">
-                  <Icon className={cn('w-4 h-4 shrink-0', cfg.label)} />
+                <div className={cn('h-1.5 w-full', cfg.bar)} />
+                <CardContent className="flex items-center gap-6 py-6 px-7">
+                  <Icon className={cn('w-6 h-6 shrink-0', cfg.label)} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{task.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{intervalLabel(task.intervalDays)}</p>
+                    <p className="text-lg font-medium truncate">{task.name}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{intervalLabel(task.intervalDays)}</p>
                   </div>
-                  <span className={cn('text-sm font-medium shrink-0', cfg.label)}>{dueLabel(task)}</span>
+                  <span className={cn('text-base font-medium shrink-0', cfg.label)}>{dueLabel(task)}</span>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button
-                      size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-emerald-600"
+                      className="h-11 w-11 p-0 text-muted-foreground hover:text-emerald-600"
                       onClick={() => markDone(task)}
                       title="Mark done"
                     >
-                      <Check className="w-4 h-4" />
+                      <Check className="w-5 h-5" />
                     </Button>
                     <Button
-                      size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0 text-muted-foreground"
+                      className="h-11 w-11 p-0 text-muted-foreground"
                       onClick={() => openEdit(task)}
                       title="Edit"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Pencil className="w-4.5 h-4.5" />
                     </Button>
                   </div>
                 </CardContent>
@@ -202,38 +200,38 @@ export default function App() {
 
         {/* Add dialog */}
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add task</DialogTitle></DialogHeader>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader><DialogTitle className="text-xl">Add task</DialogTitle></DialogHeader>
             <TaskForm />
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button onClick={addTask}>Add task</Button>
+              <Button variant="ghost" className="text-base h-11" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button className="text-base h-11 px-6" onClick={addTask}>Add task</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Edit dialog */}
         <Dialog open={!!editingTask} onOpenChange={open => { if (!open) { setEditingTask(null); setConfirmDelete(false) } }}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Edit task</DialogTitle></DialogHeader>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader><DialogTitle className="text-xl">Edit task</DialogTitle></DialogHeader>
             {confirmDelete ? (
-              <div className="py-2 space-y-4">
-                <p className="text-sm text-muted-foreground">Permanently delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This cannot be undone.</p>
+              <div className="py-2 space-y-5">
+                <p className="text-base text-muted-foreground">Permanently delete <span className="font-medium text-foreground">{editingTask?.name}</span>? This cannot be undone.</p>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-                  <Button variant="destructive" onClick={() => editingTask && deleteTask(editingTask.id)}>Delete permanently</Button>
+                  <Button variant="ghost" className="text-base h-11" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                  <Button variant="destructive" className="text-base h-11" onClick={() => editingTask && deleteTask(editingTask.id)}>Delete permanently</Button>
                 </div>
               </div>
             ) : (
               <>
                 <TaskForm />
                 <DialogFooter className="flex-row justify-between sm:justify-between">
-                  <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => setConfirmDelete(true)}>
+                  <Button variant="ghost" className="text-base h-11 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => setConfirmDelete(true)}>
                     Delete
                   </Button>
                   <div className="flex gap-2">
-                    <Button variant="ghost" onClick={() => setEditingTask(null)}>Cancel</Button>
-                    <Button onClick={saveEdit}>Save</Button>
+                    <Button variant="ghost" className="text-base h-11" onClick={() => setEditingTask(null)}>Cancel</Button>
+                    <Button className="text-base h-11 px-6" onClick={saveEdit}>Save</Button>
                   </div>
                 </DialogFooter>
               </>
@@ -243,20 +241,20 @@ export default function App() {
 
         {/* Log dialog */}
         <Dialog open={showLog} onOpenChange={setShowLog}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>History</DialogTitle></DialogHeader>
-            <div className="max-h-96 overflow-y-auto -mx-1 px-1">
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader><DialogTitle className="text-xl">History</DialogTitle></DialogHeader>
+            <div className="max-h-[28rem] overflow-y-auto -mx-1 px-1">
               {log.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No entries yet.</p>
+                <p className="text-base text-muted-foreground text-center py-10">No entries yet.</p>
               )}
               <div className="space-y-1 py-2">
                 {log.map(entry => (
-                  <div key={entry.id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-sm">{entry.taskName}</span>
+                  <div key={entry.id} className="flex items-center justify-between py-3 px-3 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900">
+                    <div className="flex items-center gap-3">
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span className="text-base">{entry.taskName}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{new Date(entry.doneAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span className="text-sm text-muted-foreground">{new Date(entry.doneAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   </div>
                 ))}
               </div>
