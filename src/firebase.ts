@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeAuth, GoogleAuthProvider, browserLocalPersistence } from 'firebase/auth'
+import { initializeFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: "AIzaSyAzaLVT40gA9b42A8eeO56ojoXRo0khvE8",
@@ -12,6 +12,15 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
-export const auth = getAuth(app)
-export const db = getFirestore(app)
+
+// Use localStorage for auth (faster than IndexedDB on iOS)
+export const auth = initializeAuth(app, {
+  persistence: browserLocalPersistence
+})
+
+// Use long-polling for Firestore (more reliable on iOS Safari)
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+})
+
 export const googleProvider = new GoogleAuthProvider()
