@@ -3,6 +3,7 @@ export interface Task {
   name: string
   intervalDays: number
   lastDone: string | null // ISO date string
+  snoozedUntil: string | null // ISO date string
 }
 
 export interface LogEntry {

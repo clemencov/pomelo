@@ -6,10 +6,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { loadTasks, saveTasks, loadLog, saveLog, daysUntilDue } from './store'
 import type { Task, LogEntry } from './types'
-import { Check, Pencil, Plus, ScrollText, Clock, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Check, Pencil, Plus, ScrollText, Clock, AlertTriangle, BellOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-function urgency(task: Task): 'overdue' | 'soon' | 'ok' | 'new' {
+function isSnoozed(task: Task): boolean {
+  return !!task.snoozedUntil && new Date(task.snoozedUntil) > new Date()
+}
+
+function urgency(task: Task): 'overdue' | 'soon' | 'ok' | 'new' | 'snoozed' {
+  if (isSnoozed(task)) return 'snoozed'
   if (!task.lastDone) return 'new'
   const days = daysUntilDue(task)
   if (days < 0) return 'overdue'
@@ -18,6 +23,10 @@ function urgency(task: Task): 'overdue' | 'soon' | 'ok' | 'new' {
 }
 
 function dueLabel(task: Task): string {
+  if (isSnoozed(task)) {
+    const until = new Date(task.snoozedUntil!)
+    return `snoozed until ${until.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+  }
   if (!task.lastDone) return 'Never done'
   const days = daysUntilDue(task)
   if (days < 0) return `${Math.abs(days)}d overdue`
@@ -34,24 +43,34 @@ function intervalLabel(days: number): string {
 }
 
 function toDateInput(iso: string | null): string {
-  if (!iso) return ''
-  return iso.split('T')[0]
+  return iso ? iso.split('T')[0] : ''
 }
 
 const urgencyConfig = {
-  overdue: { bar: 'bg-red-500', label: 'text-red-600 dark:text-red-400', icon: AlertTriangle },
-  soon:    { bar: 'bg-amber-400', label: 'text-amber-600 dark:text-amber-400', icon: Clock },
-  ok:      { bar: 'bg-emerald-400', label: 'text-emerald-600 dark:text-emerald-400', icon: Check },
-  new:     { bar: 'bg-slate-300', label: 'text-muted-foreground', icon: AlertTriangle },
+  overdue: { bar: 'bg-red-500',    label: 'text-red-600 dark:text-red-400',       icon: AlertTriangle },
+  soon:    { bar: 'bg-amber-400',  label: 'text-amber-600 dark:text-amber-400',   icon: Clock },
+  ok:      { bar: 'bg-emerald-400',label: 'text-emerald-600 dark:text-emerald-400',icon: Check },
+  new:     { bar: 'bg-slate-300',  label: 'text-muted-foreground',                icon: AlertTriangle },
+  snoozed: { bar: 'bg-violet-300', label: 'text-violet-500 dark:text-violet-400', icon: BellOff },
 }
 
+const SNOOZE_PRESETS = [
+  { label: '1 week',  days: 7 },
+  { label: '2 weeks', days: 14 },
+  { label: '1 month', days: 30 },
+]
+
 export default function App() {
-  const [tasks, setTasks] = useState<Task[]>(loadTasks)
+  const [tasks, setTasks] = useState<Task[]>(() =>
+    loadTasks().map(t => ({ snoozedUntil: null, ...t }))
+  )
   const [log, setLog] = useState<LogEntry[]>(loadLog)
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [snoozeTaskId, setSnoozeTaskId] = useState<string | null>(null)
+  const [customSnooze, setCustomSnooze] = useState('')
   const [name, setName] = useState('')
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
@@ -69,41 +88,63 @@ export default function App() {
     setEditingTask(task)
   }
 
+  function updateTasks(updated: Task[]) {
+    setTasks(updated); saveTasks(updated)
+  }
+
   function addTask() {
     if (!name.trim()) return
-    const updated = [...tasks, {
+    updateTasks([...tasks, {
       id: crypto.randomUUID(),
       name: name.trim(),
       intervalDays: parseInt(interval) || 30,
       lastDone: lastDone ? new Date(lastDone).toISOString() : null,
-    }]
-    setTasks(updated); saveTasks(updated); setShowAdd(false)
+      snoozedUntil: null,
+    }])
+    setShowAdd(false)
   }
 
   function saveEdit() {
     if (!editingTask || !name.trim()) return
-    const updated = tasks.map(t => t.id === editingTask.id
+    updateTasks(tasks.map(t => t.id === editingTask.id
       ? { ...t, name: name.trim(), intervalDays: parseInt(interval) || 30, lastDone: lastDone ? new Date(lastDone).toISOString() : null }
-      : t)
-    setTasks(updated); saveTasks(updated); setEditingTask(null)
+      : t))
+    setEditingTask(null)
   }
 
   function deleteTask(id: string) {
-    const updated = tasks.filter(t => t.id !== id)
-    setTasks(updated); saveTasks(updated); setEditingTask(null)
+    updateTasks(tasks.filter(t => t.id !== id))
+    setEditingTask(null)
   }
 
   function markDone(task: Task) {
     const now = new Date().toISOString()
-    const updatedTasks = tasks.map(t => t.id === task.id ? { ...t, lastDone: now } : t)
-    setTasks(updatedTasks); saveTasks(updatedTasks)
+    updateTasks(tasks.map(t => t.id === task.id ? { ...t, lastDone: now, snoozedUntil: null } : t))
     const updatedLog = [{ id: crypto.randomUUID(), taskId: task.id, taskName: task.name, doneAt: now }, ...log]
     setLog(updatedLog); saveLog(updatedLog)
   }
 
-  const sorted = [...tasks].sort((a, b) => daysUntilDue(a) - daysUntilDue(b))
+  function snooze(taskId: string, days: number) {
+    const until = new Date()
+    until.setDate(until.getDate() + days)
+    updateTasks(tasks.map(t => t.id === taskId ? { ...t, snoozedUntil: until.toISOString() } : t))
+    setSnoozeTaskId(null)
+    setCustomSnooze('')
+  }
+
+  function unsnooze(taskId: string) {
+    updateTasks(tasks.map(t => t.id === taskId ? { ...t, snoozedUntil: null } : t))
+  }
+
+  const sorted = [...tasks].sort((a, b) => {
+    const ua = urgency(a), ub = urgency(b)
+    if (ua === 'snoozed' && ub !== 'snoozed') return 1
+    if (ub === 'snoozed' && ua !== 'snoozed') return -1
+    return daysUntilDue(a) - daysUntilDue(b)
+  })
   const today = new Date().toISOString().split('T')[0]
-  const overdueCount = tasks.filter(t => urgency(t) === 'overdue' || urgency(t) === 'new').length
+  const overdueCount = tasks.filter(t => { const u = urgency(t); return u === 'overdue' || u === 'new' }).length
+  const snoozeTask = snoozeTaskId ? tasks.find(t => t.id === snoozeTaskId) : null
 
   const TaskForm = () => (
     <div className="space-y-6 py-2">
@@ -129,9 +170,7 @@ export default function App() {
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight">
-              pomelo
-            </h1>
+            <h1 className="text-4xl font-semibold tracking-tight">pomelo</h1>
             {overdueCount > 0 && (
               <p className="text-base text-red-500 mt-1">{overdueCount} task{overdueCount > 1 ? 's' : ''} need attention</p>
             )}
@@ -151,7 +190,7 @@ export default function App() {
         {/* Empty state */}
         {sorted.length === 0 && (
           <div className="text-center py-32 text-muted-foreground">
-            <RefreshCw className="w-16 h-16 mx-auto mb-4 opacity-20" />
+            <BellOff className="w-16 h-16 mx-auto mb-4 opacity-20" />
             <p className="text-lg font-medium">No recurring tasks</p>
             <p className="text-base mt-1">Add something you do regularly</p>
           </div>
@@ -163,8 +202,9 @@ export default function App() {
             const u = urgency(task)
             const cfg = urgencyConfig[u]
             const Icon = cfg.icon
+            const snoozed = u === 'snoozed'
             return (
-              <Card key={task.id} className="overflow-hidden border-0 shadow-sm">
+              <Card key={task.id} className={cn('overflow-hidden border-0 shadow-sm', snoozed && 'opacity-60')}>
                 <div className={cn('h-1.5 w-full', cfg.bar)} />
                 <CardContent className="flex items-center gap-6 py-6 px-7">
                   <Icon className={cn('w-6 h-6 shrink-0', cfg.label)} />
@@ -176,30 +216,29 @@ export default function App() {
                     <p className={cn('text-sm font-semibold', cfg.label)}>{dueLabel(task)}</p>
                     <p className="text-xs text-muted-foreground">
                       {task.lastDone
-                        ? <>done {new Date(task.lastDone).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
+                        ? `done ${new Date(task.lastDone).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
                         : 'never done'}
                     </p>
-                    {task.lastDone && (
+                    {task.lastDone && !snoozed && (
                       <p className="text-xs text-muted-foreground">
                         due {new Date(new Date(task.lastDone).getTime() + task.intervalDays * 86400000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      className="h-11 w-11 p-0 text-muted-foreground hover:text-emerald-600"
-                      onClick={() => markDone(task)}
-                      title="Mark done"
-                    >
+                    <Button variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:text-emerald-600" onClick={() => markDone(task)} title="Mark done">
                       <Check className="w-5 h-5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      className="h-11 w-11 p-0 text-muted-foreground"
-                      onClick={() => openEdit(task)}
-                      title="Edit"
-                    >
+                    {snoozed ? (
+                      <Button variant="ghost" className="h-11 w-11 p-0 text-violet-400 hover:text-violet-600" onClick={() => unsnooze(task.id)} title="Unsnooze">
+                        <BellOff className="w-5 h-5" />
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" className="h-11 w-11 p-0 text-muted-foreground hover:text-violet-500" onClick={() => { setSnoozeTaskId(task.id); setCustomSnooze('') }} title="Snooze">
+                        <BellOff className="w-5 h-5" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => openEdit(task)} title="Edit">
                       <Pencil className="w-4.5 h-4.5" />
                     </Button>
                   </div>
@@ -208,6 +247,42 @@ export default function App() {
             )
           })}
         </div>
+
+        {/* Snooze dialog */}
+        <Dialog open={!!snoozeTaskId} onOpenChange={open => !open && setSnoozeTaskId(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader><DialogTitle className="text-xl">Snooze — {snoozeTask?.name}</DialogTitle></DialogHeader>
+            <div className="py-2 space-y-4">
+              <div className="flex gap-2">
+                {SNOOZE_PRESETS.map(p => (
+                  <Button key={p.days} variant="outline" className="flex-1 h-11 text-base" onClick={() => snooze(snoozeTaskId!, p.days)}>
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex gap-2 items-center">
+                <Input
+                  className="text-base h-11"
+                  type="date"
+                  value={customSnooze}
+                  min={today}
+                  onChange={e => setCustomSnooze(e.target.value)}
+                  placeholder="Custom date"
+                />
+                <Button
+                  className="h-11 px-5 text-base shrink-0"
+                  disabled={!customSnooze}
+                  onClick={() => {
+                    const days = Math.round((new Date(customSnooze).getTime() - Date.now()) / 86400000)
+                    if (days > 0) snooze(snoozeTaskId!, days)
+                  }}
+                >
+                  Snooze
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Add dialog */}
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
@@ -255,9 +330,7 @@ export default function App() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader><DialogTitle className="text-xl">History</DialogTitle></DialogHeader>
             <div className="max-h-[28rem] overflow-y-auto -mx-1 px-1">
-              {log.length === 0 && (
-                <p className="text-base text-muted-foreground text-center py-10">No entries yet.</p>
-              )}
+              {log.length === 0 && <p className="text-base text-muted-foreground text-center py-10">No entries yet.</p>}
               <div className="space-y-1 py-2">
                 {log.map(entry => (
                   <div key={entry.id} className="flex items-center justify-between py-3 px-3 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900">
