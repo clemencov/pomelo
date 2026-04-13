@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth'
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, onSnapshot, setDoc, type FirestoreError } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
@@ -76,7 +76,6 @@ export default function App() {
     loadTasks().map(t => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
   )
   const [syncState, setSyncState] = useState<SyncState>('idle')
-  const [redirectChecked, setRedirectChecked] = useState(false)
 
   const [showAdd, setShowAdd] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -86,16 +85,6 @@ export default function App() {
   const [name, setName] = useState('')
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
-
-  useEffect(() => {
-    getRedirectResult(auth)
-      .catch(e => {
-        if (e?.code && e.code !== 'auth/no-auth-event') {
-          toast.error('Sign-in failed: ' + (e.message ?? e.code))
-        }
-      })
-      .finally(() => setRedirectChecked(true))
-  }, [])
 
   useEffect(() => {
     let unsubFirestore: (() => void) | null = null
@@ -158,8 +147,15 @@ export default function App() {
   }
 
   async function login() {
-    try { await signInWithRedirect(auth, googleProvider) }
-    catch (e: unknown) { const msg = e instanceof Error ? e.message : String(e); console.error(e); toast.error('Sign-in failed: ' + msg) }
+    try { await signInWithPopup(auth, googleProvider) }
+    catch (e: unknown) {
+      const code = (e as {code?: string})?.code
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error(e)
+        toast.error('Sign-in failed: ' + msg)
+      }
+    }
   }
   async function logout() { await signOut(auth); setUser(null) }
 
@@ -232,7 +228,7 @@ export default function App() {
     </div>
   )
 
-  if (user === 'loading' || !redirectChecked) {
+  if (user === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <RefreshCw className="w-5 h-5 text-muted-foreground animate-spin" />
