@@ -15,9 +15,9 @@ const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
 
-// Long-polling is more reliable than WebSockets on iOS Safari
+// Auto-detect: tries WebSocket first, falls back to long-polling (needed for iOS Safari)
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
+  experimentalAutoDetectLongPolling: true
 })
 
 export const googleProvider = new GoogleAuthProvider()

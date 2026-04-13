@@ -87,31 +87,55 @@ export default function App() {
   const [lastDone, setLastDone] = useState('')
 
   useEffect(() => {
-    getRedirectResult(auth).catch(e => toast.error('Sign-in failed: ' + e?.message))
+    getRedirectResult(auth).catch(e => {
+      if (e?.code && e.code !== 'auth/no-auth-event') {
+        toast.error('Sign-in failed: ' + (e.message ?? e.code))
+      }
+    })
   }, [])
 
   useEffect(() => {
     let unsubFirestore: (() => void) | null = null
+    let connectTimeout: ReturnType<typeof setTimeout> | null = null
+
+    function clearConnectTimeout() {
+      if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null }
+    }
+
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u)
+      clearConnectTimeout()
       if (unsubFirestore) { unsubFirestore(); unsubFirestore = null }
+
       if (u) {
         setSyncState('syncing')
+        connectTimeout = setTimeout(() => {
+          setSyncState('idle')
+          toast.error("Can't reach sync server — working offline")
+        }, 10000)
+
         unsubFirestore = onSnapshot(
           doc(db, 'users', u.uid),
           (snap) => {
+            clearConnectTimeout()
             if (!snap.metadata.hasPendingWrites && snap.exists()) {
-              const data = snap.data() as { tasks: Task[] }
-              const t = data.tasks.map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
+              const data = snap.data() as { tasks?: Task[] }
+              const t = (data.tasks ?? []).map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
               setTasks(t); saveTasks(t)
             }
             setSyncState('idle')
           },
-          (err: FirestoreError) => { console.error('Firestore snapshot error:', err.code, err.message); toast.error('Sync failed — ' + err.message) }
+          (err: FirestoreError) => {
+            clearConnectTimeout()
+            console.error('Firestore snapshot error:', err.code, err.message)
+            toast.error('Sync error: ' + err.message)
+            setSyncState('idle')
+          }
         )
       }
     })
-    return () => { unsubAuth(); if (unsubFirestore) unsubFirestore() }
+
+    return () => { unsubAuth(); if (unsubFirestore) unsubFirestore(); clearConnectTimeout() }
   }, [])
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
