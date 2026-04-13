@@ -76,6 +76,7 @@ export default function App() {
     loadTasks().map(t => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
   )
   const [syncState, setSyncState] = useState<SyncState>('idle')
+  const [redirectChecked, setRedirectChecked] = useState(false)
 
   const [showAdd, setShowAdd] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -87,11 +88,13 @@ export default function App() {
   const [lastDone, setLastDone] = useState('')
 
   useEffect(() => {
-    getRedirectResult(auth).catch(e => {
-      if (e?.code && e.code !== 'auth/no-auth-event') {
-        toast.error('Sign-in failed: ' + (e.message ?? e.code))
-      }
-    })
+    getRedirectResult(auth)
+      .catch(e => {
+        if (e?.code && e.code !== 'auth/no-auth-event') {
+          toast.error('Sign-in failed: ' + (e.message ?? e.code))
+        }
+      })
+      .finally(() => setRedirectChecked(true))
   }, [])
 
   useEffect(() => {
@@ -229,7 +232,7 @@ export default function App() {
     </div>
   )
 
-  if (user === 'loading') {
+  if (user === 'loading' || !redirectChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <RefreshCw className="w-5 h-5 text-muted-foreground animate-spin" />
