@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider } from './firebase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -66,12 +66,6 @@ const SNOOZE_PRESETS = [
 
 type SyncState = 'idle' | 'syncing' | 'error'
 
-async function loadFromFirestore(uid: string) {
-  const snap = await getDoc(doc(db, 'users', uid))
-  if (!snap.exists()) return null
-  return snap.data() as { tasks: Task[]; log: LogEntry[] }
-}
-
 async function saveToFirestore(uid: string, tasks: Task[], log: LogEntry[]) {
   await setDoc(doc(db, 'users', uid), { tasks, log })
 }
@@ -95,25 +89,35 @@ export default function App() {
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
 
-  // Auth listener
+  // Auth listener + real-time Firestore sync
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
+    let unsubFirestore: (() => void) | null = null
+
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u)
+      if (unsubFirestore) { unsubFirestore(); unsubFirestore = null }
+
       if (u) {
         setSyncState('syncing')
-        try {
-          const data = await loadFromFirestore(u.uid)
-          if (data) {
-            const t = data.tasks.map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
-            setTasks(t); saveTasks(t)
-            setLog(data.log); saveLog(data.log)
-          }
-          setSyncState('idle')
-        } catch {
-          setSyncState('error')
-        }
+        unsubFirestore = onSnapshot(
+          doc(db, 'users', u.uid),
+          (snap) => {
+            // Skip updates caused by our own pending writes
+            if (snap.metadata.hasPendingWrites) return
+            if (snap.exists()) {
+              const data = snap.data() as { tasks: Task[]; log: LogEntry[] }
+              const t = data.tasks.map((t: Task) => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
+              setTasks(t); saveTasks(t)
+              setLog(data.log); saveLog(data.log)
+            }
+            setSyncState('idle')
+          },
+          () => setSyncState('error')
+        )
       }
     })
+
+    return () => { unsubAuth(); if (unsubFirestore) unsubFirestore() }
   }, [])
 
   // Debounced save to Firestore
