@@ -16,14 +16,36 @@ function badgeVariant(task: Task): 'destructive' | 'secondary' | 'outline' {
   return 'outline'
 }
 
+function toDateInput(iso: string | null): string {
+  if (!iso) return ''
+  return iso.split('T')[0]
+}
+
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>(loadTasks)
   const [log, setLog] = useState<LogEntry[]>(loadLog)
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+
+  // form state
   const [name, setName] = useState('')
   const [interval, setInterval] = useState('30')
   const [lastDone, setLastDone] = useState('')
+
+  function openAdd() {
+    setName('')
+    setInterval('30')
+    setLastDone('')
+    setShowAdd(true)
+  }
+
+  function openEdit(task: Task) {
+    setName(task.name)
+    setInterval(String(task.intervalDays))
+    setLastDone(toDateInput(task.lastDone))
+    setEditingTask(task)
+  }
 
   function addTask() {
     if (!name.trim()) return
@@ -36,10 +58,27 @@ export default function App() {
     const updated = [...tasks, task]
     setTasks(updated)
     saveTasks(updated)
-    setName('')
-    setInterval('30')
-    setLastDone('')
     setShowAdd(false)
+  }
+
+  function saveEdit() {
+    if (!editingTask || !name.trim()) return
+    const updated = tasks.map(t => t.id === editingTask.id ? {
+      ...t,
+      name: name.trim(),
+      intervalDays: parseInt(interval) || 30,
+      lastDone: lastDone ? new Date(lastDone).toISOString() : null,
+    } : t)
+    setTasks(updated)
+    saveTasks(updated)
+    setEditingTask(null)
+  }
+
+  function deleteTask(id: string) {
+    const updated = tasks.filter(t => t.id !== id)
+    setTasks(updated)
+    saveTasks(updated)
+    setEditingTask(null)
   }
 
   function markDone(task: Task) {
@@ -47,19 +86,31 @@ export default function App() {
     const updatedTasks = tasks.map(t => t.id === task.id ? { ...t, lastDone: now } : t)
     setTasks(updatedTasks)
     saveTasks(updatedTasks)
-
-    const entry: LogEntry = {
-      id: crypto.randomUUID(),
-      taskId: task.id,
-      taskName: task.name,
-      doneAt: now,
-    }
+    const entry: LogEntry = { id: crypto.randomUUID(), taskId: task.id, taskName: task.name, doneAt: now }
     const updatedLog = [entry, ...log]
     setLog(updatedLog)
     saveLog(updatedLog)
   }
 
   const sorted = [...tasks].sort((a, b) => daysUntilDue(a) - daysUntilDue(b))
+  const today = new Date().toISOString().split('T')[0]
+
+  const TaskForm = () => (
+    <div className="space-y-4 py-2">
+      <div className="space-y-1">
+        <Label>Name</Label>
+        <Input placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} />
+      </div>
+      <div className="space-y-1">
+        <Label>Repeat every (days)</Label>
+        <Input type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
+      </div>
+      <div className="space-y-1">
+        <Label>Last done <span className="text-muted-foreground">(optional)</span></Label>
+        <Input type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={today} />
+      </div>
+    </div>
+  )
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
@@ -67,7 +118,7 @@ export default function App() {
         <h1 className="text-2xl font-bold tracking-tight">pomelo</h1>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={() => setShowLog(true)}>Log</Button>
-          <Button size="sm" onClick={() => setShowAdd(true)}>+ Add task</Button>
+          <Button size="sm" onClick={openAdd}>+ Add task</Button>
         </div>
       </div>
 
@@ -83,35 +134,21 @@ export default function App() {
                 <p className="font-medium">{task.name}</p>
                 <p className="text-xs text-muted-foreground">Every {task.intervalDays}d</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <Badge variant={badgeVariant(task)}>{dueDateLabel(task)}</Badge>
                 <Button size="sm" variant="outline" onClick={() => markDone(task)}>Done</Button>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(task)}>Edit</Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Add task dialog */}
+      {/* Add dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label>Name</Label>
-              <Input placeholder="e.g. Change water filter" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTask()} />
-            </div>
-            <div className="space-y-1">
-              <Label>Repeat every (days)</Label>
-              <Input type="number" min="1" value={interval} onChange={e => setInterval(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Last done <span className="text-muted-foreground">(optional)</span></Label>
-              <Input type="date" value={lastDone} onChange={e => setLastDone(e.target.value)} max={new Date().toISOString().split('T')[0]} />
-            </div>
-          </div>
+          <DialogHeader><DialogTitle>Add task</DialogTitle></DialogHeader>
+          <TaskForm />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
             <Button onClick={addTask}>Add</Button>
@@ -119,12 +156,25 @@ export default function App() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit dialog */}
+      <Dialog open={!!editingTask} onOpenChange={open => !open && setEditingTask(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit task</DialogTitle></DialogHeader>
+          <TaskForm />
+          <DialogFooter className="justify-between">
+            <Button variant="destructive" onClick={() => editingTask && deleteTask(editingTask.id)}>Delete</Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setEditingTask(null)}>Cancel</Button>
+              <Button onClick={saveEdit}>Save</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Log dialog */}
       <Dialog open={showLog} onOpenChange={setShowLog}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Log</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Log</DialogTitle></DialogHeader>
           <div className="space-y-2 max-h-96 overflow-y-auto py-2">
             {log.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No entries yet.</p>}
             {log.map(entry => (
