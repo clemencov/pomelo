@@ -11,6 +11,7 @@ import { loadTasks, saveTasks, daysUntilDue } from './store'
 import type { Task } from './types'
 import { Check, Pencil, Plus, Clock, AlertTriangle, BellOff, LogOut, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Toaster, toast } from 'sonner'
 
 function isSnoozed(task: Task): boolean {
   return !!task.snoozedUntil && new Date(task.snoozedUntil) > new Date()
@@ -63,7 +64,7 @@ const SNOOZE_PRESETS = [
   { label: '1 month', days: 30 },
 ]
 
-type SyncState = 'idle' | 'syncing' | 'error'
+type SyncState = 'idle' | 'syncing'
 
 async function saveToFirestore(uid: string, tasks: Task[]) {
   await setDoc(doc(db, 'users', uid), { tasks }, { merge: true })
@@ -102,7 +103,7 @@ export default function App() {
             }
             setSyncState('idle')
           },
-          (err: FirestoreError) => { console.error('Firestore snapshot error:', err.code, err.message); setSyncState('error') }
+          (err: FirestoreError) => { console.error('Firestore snapshot error:', err.code, err.message); toast.error('Sync failed — ' + err.message) }
         )
       }
     })
@@ -116,7 +117,7 @@ export default function App() {
     saveTimeout.current = setTimeout(() => {
       saveToFirestore(user.uid, t).catch((err) => {
         console.error('Firestore write error:', err)
-        setSyncState('error')
+        toast.error('Could not save changes — ' + (err?.message ?? 'unknown error'))
       })
     }, 300)
   }, [user])
@@ -225,6 +226,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Toaster position="bottom-center" richColors />
       <div className="max-w-2xl mx-auto px-6">
 
         {/* Header */}
@@ -239,7 +241,6 @@ export default function App() {
           </div>
           <div className="flex items-center gap-1">
             {syncState === 'syncing' && <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin mr-2" />}
-            {syncState === 'error' && <span className="font-mono text-xs text-red-500 mr-2">sync error</span>}
             <Button size="sm" className="text-sm h-8 px-3" onClick={openAdd}>
               <Plus className="w-3.5 h-3.5 mr-1" />
               Add task
