@@ -62,7 +62,7 @@ const SNOOZE_PRESETS = [
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>(() =>
-    loadTasks().map(t => ({ snoozedUntil: null, ...t }))
+    loadTasks().map(t => ({ ...t, snoozedUntil: t.snoozedUntil ?? null }))
   )
   const [log, setLog] = useState<LogEntry[]>(loadLog)
   const [showAdd, setShowAdd] = useState(false)
